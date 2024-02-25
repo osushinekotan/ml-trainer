@@ -5,7 +5,14 @@ description = "Add your description here"
 authors = [
     { name = "osushinekotan", email = "" }
 ]
-dependencies = []
+dependencies = [
+    "lightgbm>=4.3.0",
+    "pandas>=2.2.1",
+    "scikit-learn>=1.4.1.post1",
+    "numpy>=1.26.4",
+    "polars>=0.20.10",
+    "pytest>=8.0.2",
+]
 readme = "README.md"
 requires-python = ">= 3.8"
 
@@ -18,6 +25,7 @@ managed = true
 dev-dependencies = [
     "mypy>=1.8.0",
     "ruff>=0.2.2",
+    "pre-commit>=3.6.2",
 ]
 
 [tool.hatch.metadata]
@@ -25,3 +33,57 @@ allow-direct-references = true
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/ml_trainer"]
+
+[tool.ruff]
+target-version = "py311"
+line-length = 120
+lint.select = [
+    "F", # pyflakes
+    "E", # pycodestyle
+    "W", # pycodestyle warnings
+    "I", # isort
+]
+lint.unfixable = ["F401", "F841"]
+lint.ignore = [
+    "E501",
+    "E402",
+]
+
+[tool.ruff.lint.per-file-ignores]
+"__init__.py" = ["F401", "D104"]
+
+[tool.mypy]
+python_version = "3.11"
+allow_redefinition = true
+allow_untyped_globals = false
+check_untyped_defs = true
+color_output = true
+disallow_incomplete_defs = true
+disallow_untyped_calls = false
+disallow_untyped_decorators = false
+disallow_untyped_defs = true
+error_summary = true
+ignore_missing_imports = true
+implicit_reexport = true
+namespace_packages = true
+no_implicit_optional = true
+pretty = true
+show_column_numbers = true
+show_error_codes = true
+show_error_context = true
+show_traceback = true
+strict = true
+warn_no_return = true
+warn_redundant_casts = true
+warn_return_any = false
+warn_unreachable = true
+warn_unused_configs = true
+warn_unused_ignores = false
+disallow_any_generics = false
+
+[[tool.mypy.overrides]]
+module = [
+    "tests.*",
+]
+ignore_errors = true
+ignore_missing_imports = true
