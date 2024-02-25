@@ -12,7 +12,6 @@ from sklearn.linear_model import (
 
 from src.ml_trainer.tabular.models.base import EstimatorBase
 from src.ml_trainer.tabular.utils.model_utils import reset_X
-from src.ml_trainer.tabular.utils.utils import generate_uid
 
 
 class LinearRegressionModel(EstimatorBase):
@@ -80,15 +79,3 @@ class LinearRegressionModel(EstimatorBase):
             }
         )
         return importance_df
-
-    def get_params(self):
-        return self.model.get_params()
-
-    @property
-    def uid(self):
-        uid = generate_uid(
-            self.params,
-            self.fit_params,
-            self.estimator_name,
-        )
-        return f"{self.estimator_name}_{uid}"
