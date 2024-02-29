@@ -1,10 +1,13 @@
 # type: ignore
+import json
 from pathlib import Path
 
+import joblib
 import numpy as np
 import pandas as pd
 import polars as pl
 from numpy.typing import ArrayLike
+from rich.console import Console
 from sklearn.metrics import mean_absolute_error, mean_absolute_percentage_error, roc_auc_score
 from sklearn.model_selection import KFold, _BaseKFold
 
@@ -12,9 +15,6 @@ from src.ml_trainer.models.base import EstimatorBase
 from src.ml_trainer.tabular.evaluation.classification import macro_roc_auc_score
 from src.ml_trainer.tabular.evaluation.regression import root_mean_squared_error
 from src.ml_trainer.tabular.types import XyArrayLike
-import json
-from rich.console import Console
-import joblib
 
 console = Console()
 REGRESSION_METRICS = {
@@ -142,6 +142,9 @@ class Trainer:
                 random_state=self.seed,
             ).split(X_train, y_train, groups=self.groups)
 
+        task = self.judge_task(y_train)
+        metrics = self.get_eval_metrics(task)
+
         fold_fitted_results = {}
         for i_fold, (tr_idx, va_idx) in enumerate(folds):
             # dataframe と array に対応
@@ -154,9 +157,37 @@ class Trainer:
             fitted_resuts = self.train(X_tr, y_tr, X_va, y_va, out_dir=self.out_dir / f"fold{i_fold}")
             fold_fitted_results[f"fold{i_fold}"] = fitted_resuts
 
+        oof = self.get_oof(fold_fitted_results)
+        for est, pred in oof.items():
+            result_dir = self.out_dir / "results" / est
+            result_dir.mkdir(exist_ok=True, parents=True)
+
+            # oof predictions
+            joblib.dump(pred, result_dir / "pred.pkl")
+
+            # oof scores
+            scores = {metric_name: metric(y_true=y_train, y_pred=pred) for metric_name, metric in metrics.items()}
+            json.dump(scores, open(result_dir / "scores.json", "w"), indent=4)
+            console.print(f"[oof] [{est}] scores: \n{json.dumps(scores, indent=4)}", style="bold blue")
+
+        if self.ensemble:
+            console.print("Make mean ensemble OOF predictions from below estimators", style="bold green")
+            console.print(f"Estimators: {list(oof.keys())}", style="bold green")
+            emsemble_dir = self.out_dir / "results" / "ensemble"
+            emsemble_dir.mkdir(exist_ok=True, parents=True)
+
+            mean_oof = np.mean(list(oof.values()), axis=0)
+            joblib.dump(mean_oof, emsemble_dir / "pred.pkl")
+
+            ensemble_scores = {
+                metric_name: metric(y_true=y_train, y_pred=mean_oof) for metric_name, metric in metrics.items()
+            }
+            json.dump(ensemble_scores, open(emsemble_dir / "scores.json", "w"), indent=4)
+            console.print(f"[oof] [ensemble] scores: \n{json.dumps(ensemble_scores, indent=4)}", style="bold blue")
+
         return fold_fitted_results
 
-    def eval_oof(self, cv_results: dict):
+    def get_oof(self, cv_results: dict) -> dict[str:ArrayLike]:
         oof_results = {}  # {est1: pred, est2: pred, ...}
 
         for fold in cv_results:
@@ -171,7 +202,7 @@ class Trainer:
                 else:
                     oof_results[est].extend(data["pred"])
 
-        pass
+        return oof_results
 
     def predict(self):
         pass
