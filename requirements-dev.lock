@@ -22,6 +22,10 @@ joblib==1.3.2
     # via scikit-learn
 lightgbm==4.3.0
     # via ml-trainer
+markdown-it-py==3.0.0
+    # via rich
+mdurl==0.1.2
+    # via markdown-it-py
 mypy==1.8.0
 mypy-extensions==1.0.0
     # via mypy
@@ -43,6 +47,8 @@ pluggy==1.4.0
 polars==0.20.10
     # via ml-trainer
 pre-commit==3.6.2
+pygments==2.17.2
+    # via rich
 pytest==8.0.2
     # via ml-trainer
 python-dateutil==2.8.2
@@ -51,6 +57,8 @@ pytz==2024.1
     # via pandas
 pyyaml==6.0.1
     # via pre-commit
+rich==13.7.1
+    # via ml-trainer
 ruff==0.2.2
 scikit-learn==1.4.1.post1
     # via ml-trainer

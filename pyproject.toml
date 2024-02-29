@@ -12,6 +12,7 @@ dependencies = [
     "numpy>=1.26.4",
     "polars>=0.20.10",
     "pytest>=8.0.2",
+    "rich>=13.7.1",
 ]
 readme = "README.md"
 requires-python = ">= 3.8"
