@@ -12,7 +12,11 @@ from src.ml_trainer.models.base import EstimatorBase
 from src.ml_trainer.tabular.evaluation.classification import macro_roc_auc_score
 from src.ml_trainer.tabular.evaluation.regression import root_mean_squared_error
 from src.ml_trainer.tabular.types import XyArrayLike
+import json
+from rich.console import Console
+import joblib
 
+console = Console()
 REGRESSION_METRICS = {
     "rmse": root_mean_squared_error,
     "mae": mean_absolute_error,
@@ -54,7 +58,7 @@ class Trainer:
         self.kwargs = kwargs
         self.is_fitted = False
 
-    def get_eval_metrics(self, task: str) -> dict:
+    def get_eval_metrics(self, task: str) -> dict[str, callable]:
         if self.eval_metrics is None:
             if self.custom_eval is None:
                 raise ValueError("eval_metrics or custom_eval must be specified")
@@ -93,24 +97,35 @@ class Trainer:
         out_dir.mkdir(exist_ok=True, parents=True)
 
         task = self.judge_task(y_train)
-        print(task)
+        metrics = self.get_eval_metrics(task)
 
-        fitted_estimators: dict = {}
+        console.print(f"Estimator saving to: {out_dir}", style="bold green")
+        console.print(f"[{task} Metrics]: \n{metrics}", style="bold green")
+
+        resutls: dict = {}
         for estimator in self.estimators:
             estimator_uid = estimator.uid
+            estimator_path = out_dir / estimator_uid / f"{estimator_uid}.pkl"
 
+            console.print(f"[{estimator_uid}] start training :rocket:", style="bold blue")
             estimator.fit(X_train=X_train, y_train=y_train, X_val=X_val, y_val=y_val)
-            estimator.save(out_dir / f"{estimator_uid}.pkl")
+            estimator.save(estimator_path)
 
             pred = estimator.predict(X_val)
+            joblib.dump(pred, out_dir / estimator_uid / "pred.pkl")
 
-            fitted_estimators[estimator_uid] = {
+            scores = {metric_name: metric(y_true=y_val, y_pred=pred) for metric_name, metric in metrics.items()}
+            json.dump(scores, open(out_dir / estimator_uid / "scores.json", "w"), indent=4)
+
+            console.print(f"[{estimator_uid}] scores: \n{json.dumps(scores, indent=4)}", style="bold blue")
+            resutls[estimator_uid] = {
                 "estimator": estimator,
                 "pred": pred,
+                "scores": scores,
             }
 
         self.is_fitted = True
-        return fitted_estimators  # scores, feature_importance, etc
+        return resutls
 
     def cv(self, X_train: XyArrayLike, y_train: XyArrayLike):
         if isinstance(X_train, pd.DataFrame) or isinstance(X_train, pl.DataFrame):
@@ -127,7 +142,7 @@ class Trainer:
                 random_state=self.seed,
             ).split(X_train, y_train, groups=self.groups)
 
-        fold_fitted_estimators = {}
+        fold_fitted_results = {}
         for i_fold, (tr_idx, va_idx) in enumerate(folds):
             # dataframe と array に対応
             val_mask = np.zeros(len(X_train), dtype=bool)
@@ -136,8 +151,27 @@ class Trainer:
             X_tr, X_va = X_train[tr_idx].copy(), X_train[va_idx].copy()
             y_tr, y_va = y_train[tr_idx].copy(), y_train[va_idx].copy()
 
-            fitted_estimators = self.train(X_tr, y_tr, X_va, y_va, out_dir=self.out_dir / f"fold{i_fold}")
-            fold_fitted_estimators[f"fold{i_fold}"] = fitted_estimators
+            fitted_resuts = self.train(X_tr, y_tr, X_va, y_va, out_dir=self.out_dir / f"fold{i_fold}")
+            fold_fitted_results[f"fold{i_fold}"] = fitted_resuts
+
+        return fold_fitted_results
+
+    def eval_oof(self, cv_results: dict):
+        oof_results = {}  # {est1: pred, est2: pred, ...}
+
+        for fold in cv_results:
+            for est, data in cv_results[fold].items():
+                scores = data["scores"]
+                console.print(
+                    f"[fold{fold}] [{est}] scores: \n{json.dumps(scores, indent=4)}",
+                    style="bold blue",
+                )
+                if est not in oof_results:
+                    oof_results[est] = data["pred"]
+                else:
+                    oof_results[est].extend(data["pred"])
+
+        pass
 
     def predict(self):
         pass
