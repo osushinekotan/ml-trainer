@@ -1,8 +1,10 @@
 import pandas as pd
 from lightgbm import LGBMModel
+from numpy.typing import ArrayLike
 
-from src.ml_trainer.tabular.models.base import EstimatorBase
-from src.ml_trainer.tabular.utils.model_utils import reset_X
+from ..types import XyArrayLike
+from ..utils.model_utils import reset_X
+from .base import EstimatorBase
 
 
 class LightGBMModel(EstimatorBase):
@@ -11,8 +13,8 @@ class LightGBMModel(EstimatorBase):
     def __init__(
         self,
         feature_names: list[str],
-        params: dict,
-        fit_params: dict,
+        params: dict = {},
+        fit_params: dict = {},
         estimator_name: str = "lightgbm",
     ) -> None:
         self.model = LGBMModel(**params)
@@ -21,7 +23,7 @@ class LightGBMModel(EstimatorBase):
         self.feature_names = feature_names
         self.estimator_name = estimator_name
 
-    def fit(self, X_train, y_train, X_val, y_val):
+    def fit(self, X_train: XyArrayLike, y_train: XyArrayLike, X_val: XyArrayLike, y_val: XyArrayLike) -> None:
         X_train = reset_X(X_train, self.feature_names)
         X_val = reset_X(X_val, self.feature_names)
 
@@ -32,11 +34,11 @@ class LightGBMModel(EstimatorBase):
             **self.fit_params,
         )
 
-    def predict(self, X):
+    def predict(self, X: XyArrayLike) -> ArrayLike:
         X = reset_X(X, self.feature_names)
         return self.model.predict(X)
 
-    def get_feature_importance(self):
+    def get_feature_importance(self) -> pd.DataFrame:
         assert len(self.feature_names) == len(self.model.feature_importances_)
         importance_df = pd.DataFrame(
             {

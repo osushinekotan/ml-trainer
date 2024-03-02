@@ -2,8 +2,8 @@ from abc import ABC, abstractmethod
 from pathlib import Path
 
 import joblib
-import numpy as np
 import pandas as pd
+from numpy.typing import ArrayLike
 
 from ..types import XyArrayLike
 from ..utils.utils import generate_uid
@@ -23,7 +23,7 @@ class EstimatorBase(ABC):
         pass
 
     @abstractmethod
-    def predict(self, X: XyArrayLike) -> np.ndarray:
+    def predict(self, X: XyArrayLike) -> ArrayLike:
         pass
 
     @abstractmethod
