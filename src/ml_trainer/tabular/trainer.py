@@ -1,7 +1,6 @@
-# type: ignore
 import json
 from pathlib import Path
-from typing import Callable
+from typing import Callable, Generator
 
 import japanize_matplotlib
 import joblib
@@ -12,8 +11,6 @@ import polars as pl
 import seaborn as sns
 from matplotlib.figure import Figure
 from numpy.typing import ArrayLike
-
-# from rich import print
 from sklearn.metrics import mean_absolute_error, mean_absolute_percentage_error, roc_auc_score, root_mean_squared_error
 from sklearn.model_selection import BaseCrossValidator, KFold
 from sklearn.utils.multiclass import type_of_target
@@ -51,12 +48,11 @@ class Trainer:
         task_type: str = "auto",
         eval_metrics: list[str] | None | str = "auto",
         custom_eval: Callable | None = None,
-        **kwargs,
     ) -> None:
         self.estimators = estimators
         self.ensemble = ensemble
 
-        self.out_dir = Path(out_dir) or Path.cwd() / "output"
+        self.out_dir = Path(out_dir) or Path.cwd() / "output"  # type: ignore
         self.out_dir.mkdir(exist_ok=True, parents=True)
 
         self.split_type = split_type
@@ -66,7 +62,6 @@ class Trainer:
         self.eval_metrics = eval_metrics
         self.custom_eval = custom_eval
 
-        self.kwargs = kwargs
         self.is_fitted = False
         self.is_cv = False
 
@@ -162,17 +157,19 @@ class Trainer:
             assert isinstance(X_train, pd.DataFrame) or isinstance(X_train, pl.DataFrame), "X_train must be DataFrame"
             assert "fold" in X_train.columns, "X_train must have 'fold' column"
             folds = self._generate_folds(X_train["fold"])
-            self.n_splits = X_train["fold"].nunique()
+            self.n_splits = X_train["fold"].nunique()  # type: ignore
         elif isinstance(self.split_type, list):
             # NOTE : split_type が list の場合はそのリストに従って分割する splitter を作成
             folds = self._generate_folds(self.split_type)
             self.n_splits = len(np.unique(self.split_type))
-        else:
+        elif isinstance(self.split_type, BaseCrossValidator):
             folds = self.split_type(
                 n_splits=self.n_splits,
                 shuffle=True,
                 random_state=self.seed,
             ).split(X_train, y_train, groups=self.groups)
+        else:
+            raise ValueError(f"Invalid split_type: {self.split_type}")
 
         task = self._judge_task(y_train)
         print(rf"[{task}] Cross Validation: {self.n_splits} folds")
@@ -185,8 +182,8 @@ class Trainer:
             val_mask = np.zeros(len(X_train), dtype=bool)
             val_mask[va_idx] = True
 
-            X_tr, y_tr = X_train[~val_mask].copy(), y_train[~val_mask].copy()
-            X_va, y_va = X_train[val_mask].copy(), y_train[val_mask].copy()
+            X_tr, y_tr = X_train[~val_mask].copy(), y_train[~val_mask].copy()  # type: ignore
+            X_va, y_va = X_train[val_mask].copy(), y_train[val_mask].copy()  # type: ignore
 
             fitted_resuts = self.train(X_tr, y_tr, X_va, y_va, out_dir=self.out_dir / f"fold{i_fold}")
             fold_fitted_results[f"fold{i_fold}"] = fitted_resuts
@@ -220,6 +217,7 @@ class Trainer:
         """
 
         print(f"Estimator restoring from: {out_dir}")
+        out_dir = out_dir or self.out_dir
 
         resutls = {}
         for estimator in self.estimators:
@@ -229,14 +227,14 @@ class Trainer:
             print(rf"[{estimator_uid}] start predicting :rocket:")
             estimator.load(estimator_dir / "estimator.pkl")
 
-            pred = estimator.predict(X)
+            pred: ArrayLike = estimator.predict(X)
             resutls[estimator_uid] = pred
             if save:
                 joblib.dump(pred, estimator_dir / "test_pred.pkl")
 
         if self.ensemble:
             # NOTE : mean ensemble 予測値取得する
-            ensemble_pred = np.mean([_pred for _pred in resutls.values()], axis=0)
+            ensemble_pred = np.mean([_pred for _pred in resutls.values()], axis=0)  # type: ignore
             resutls["ensemble"] = ensemble_pred
             if save:
                 joblib.dump(pred, out_dir / "ensemble" / "test_pred.pkl")
@@ -255,6 +253,7 @@ class Trainer:
             dict[str, ArrayLike]: estimator ごとの予測値を格納した辞書。fold ごとの平均予測値が出力される。
         """
         print(f"Predict Cross Validation : {self.n_splits} folds.")
+        out_dir = out_dir or self.out_dir
 
         fold_results = {}
         for i_fold in range(self.n_splits):
@@ -263,7 +262,7 @@ class Trainer:
             pred_results = self.predict(X, out_dir=fold_dir, save=False)  # NOTE : cv 予測時は各 fold pred は保存しない
             fold_results[f"fold{i_fold}"] = pred_results
 
-        fold_means = self.get_fold_mean(fold_results)
+        fold_means = self.get_fold_mean(fold_results)  # type: ignore
         if save:
             for est, pred in fold_means.items():
                 result_dir = out_dir / "results" / est
@@ -296,7 +295,7 @@ class Trainer:
 
         return metrics
 
-    def get_oof(self, cv_results: dict) -> dict[str:ArrayLike]:
+    def get_oof(self, cv_results: dict) -> dict[str, ArrayLike]:
         """Get Out Of Fold Prediction results.
 
         Returns:
@@ -313,7 +312,7 @@ class Trainer:
                 else:
                     oof_results[est].extend(list(data["pred"]))
 
-        return oof_results
+        return oof_results  # type: ignore
 
     def get_fold_mean(self, fold_results: dict[str, ArrayLike]) -> dict[str, ArrayLike]:
         """Get Aggregated Prediction results.
@@ -322,9 +321,9 @@ class Trainer:
             dict: estimator ごとの fold ごとの予測値を集約した辞書。 {est1: pred, est2: pred, ...} の形式で出力される (pred: ArrayLike)。
         """
         # 各 est の fold ごとの pred 値を収集
-        fold_values = {est: [] for est in fold_results[fold_results.keys()][0]}
+        fold_values = {est: [] for est in fold_results[fold_results.keys()][0]}  # type: ignore
         for fold in fold_results:
-            for est, data in fold_results[fold].items():
+            for est, data in fold_results[fold].items():  # type: ignore
                 fold_values[est].append(data["pred"])
 
         # 各 est の fold 平均を計算
@@ -437,7 +436,7 @@ class Trainer:
         return fig
 
     @property
-    def snapshot_items(self):
+    def snapshot_items(self) -> list[str]:
         return [
             "estimators",
             "ensemble",
@@ -471,12 +470,12 @@ class Trainer:
         if not filepath.exists():
             raise FileNotFoundError(f"{filepath} does not exist.")
 
-        snapshot = joblib.load(filepath)
-        for item, value in zip(cls.snapshot_items, snapshot):
+        snapshot: list = joblib.load(filepath)
+        for item, value in zip(cls.snapshot_items, snapshot):  # type: ignore
             setattr(cls, item, value)
-        return cls
+        return cls  # type: ignore
 
-    def _generate_folds(self, fold_list: list | pd.Series):
+    def _generate_folds(self, fold_list: list | pd.Series) -> Generator:
         fold_series = pd.Series(fold_list)
         for fold in fold_series.unique():
             test_idx = fold_series[fold_series == fold].index
