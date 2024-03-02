@@ -127,7 +127,7 @@ class Trainer:
         self.is_fitted = True
         return resutls
 
-    def cv(self, X_train: XyArrayLike, y_train: XyArrayLike):
+    def cv(self, X_train: XyArrayLike, y_train: XyArrayLike) -> dict[str, ArrayLike]:
         if isinstance(X_train, pd.DataFrame) or isinstance(X_train, pl.DataFrame):
             if self.split_type == "fold" and "fold" in X_train.columns:
                 folds = self._generate_folds(X_train["fold"])
@@ -185,7 +185,7 @@ class Trainer:
             json.dump(ensemble_scores, open(emsemble_dir / "scores.json", "w"), indent=4)
             console.print(f"[oof] [ensemble] scores: \n{json.dumps(ensemble_scores, indent=4)}", style="bold blue")
 
-        return fold_fitted_results
+        return oof
 
     def get_oof(self, cv_results: dict) -> dict[str:ArrayLike]:
         oof_results = {}  # {est1: pred, est2: pred, ...}
