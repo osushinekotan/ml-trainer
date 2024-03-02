@@ -55,6 +55,7 @@ class Trainer:
         "custom_eval",
         "task_type",
         "trainer_name",
+        "scores_df",
     ]
 
     def __init__(
@@ -93,6 +94,7 @@ class Trainer:
 
         self.is_fitted = False
         self.is_cv = False
+        self.scores_df = pd.DataFrame()
 
         self.task_type = task_type
         self.trainer_name = trainer_name
@@ -132,8 +134,7 @@ class Trainer:
         log(f"Estimator saving to: {out_dir}", logger=self.logger)
         log(rf"{task} metrics: {[metric.__name__ for metric in metrics.values()]}", logger=self.logger)
 
-        resutls: dict = {}
-
+        results: dict = {}
         for estimator in self.estimators:
             estimator_uid = estimator.uid
             out_dir_est = out_dir / estimator_uid
@@ -150,7 +151,7 @@ class Trainer:
             json.dump(scores, open(out_dir_est / "scores.json", "w"), indent=4)
 
             log(rf"[{estimator_uid}] scores: {json.dumps(scores, indent=4)}", logger=self.logger)
-            resutls[estimator_uid] = {
+            results[estimator_uid] = {
                 "estimator": estimator,
                 "pred": pred,
                 "scores": scores,
@@ -162,7 +163,7 @@ class Trainer:
             ensemble_dir = out_dir / "ensemble"
             ensemble_dir.mkdir(exist_ok=True, parents=True)
 
-            ensemble_pred = np.mean([_pred for _pred in resutls.values()], axis=0)
+            ensemble_pred = np.mean([_pred for _pred in results.values()], axis=0)
             ensemble_scores = {
                 metric_name: metric(y_true=y_val, y_pred=ensemble_pred) for metric_name, metric in metrics.items()
             }
@@ -170,10 +171,13 @@ class Trainer:
             json.dump(ensemble_scores, open(ensemble_dir / "scores.json", "w"), indent=4)
 
             log(f"[ensemble] scores: {json.dumps(ensemble_scores, indent=4)}", logger=self.logger)
-            resutls["ensemble"] = {"pred": ensemble_pred, "scores": ensemble_scores}
+            results["ensemble"] = {"pred": ensemble_pred, "scores": ensemble_scores}
 
         self.is_fitted = True
-        return resutls
+        self.scores_df = pd.concat(
+            [self.scores_df, self.make_socres_df(results, name=out_dir.name)],
+        ).reset_index(drop=True)  # cross validation に対応するため concat する
+        return results
 
     def train_cv(self, X_train: XyArrayLike, y_train: XyArrayLike) -> dict[str, ArrayLike]:
         """Cross Validation.
@@ -225,6 +229,7 @@ class Trainer:
 
         # NOTE : oof 予測値取得する eg. {est1: pred, est2: pred, ...} pred: ArrayLike
         oof = self.get_oof(fold_fitted_results)
+        oof_results = {}
         for est, pred in oof.items():
             result_dir = self.out_dir / "results" / est
             result_dir.mkdir(exist_ok=True, parents=True)
@@ -236,6 +241,11 @@ class Trainer:
             scores = {metric_name: metric(y_true=y_train, y_pred=pred) for metric_name, metric in metrics.items()}
             json.dump(scores, open(result_dir / "scores.json", "w"), indent=4)
             log(rf"[oof] [{est}] scores: {json.dumps(scores, indent=4)}", logger=self.logger)
+            oof_results[est] = {"scores": scores}  # NOTE : make_socres_df で使うため dict で格納
+
+        self.scores_df = pd.concat(
+            [self.scores_df, self.make_socres_df(oof_results, name="oof")],
+        ).reset_index(drop=True)
 
         return oof
 
@@ -331,6 +341,23 @@ class Trainer:
             metrics[self.custom_eval.__name__] = self.custom_eval
 
         return metrics
+
+    def make_socres_df(self, results: dict, name: str) -> pd.DataFrame:
+        """Make scores DataFrame.
+
+        Args:
+            results (dict): 学習結果を格納した辞書。 {estimator_uid: {"estimator": estimator, "pred": pred, "scores": scores}} の形式。
+            out_dir (Path): 保存先のディレクトリ。`name` をカラムに追加する。
+
+        Returns:
+            pd.DataFrame: scores を格納した DataFrame。
+        """
+        scores_df = pd.DataFrame()
+        for est, data in results.items():
+            scores_df = pd.concat([scores_df, pd.Series(data["scores"], name=est).to_frame().T])
+
+        scores_df = scores_df.assign(name=name).reset_index().rename(columns={"index": "estimator"})
+        return scores_df
 
     def get_oof(self, cv_results: dict) -> dict[str, ArrayLike]:
         """Get Out Of Fold Prediction results.
