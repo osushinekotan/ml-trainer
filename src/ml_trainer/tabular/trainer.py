@@ -163,7 +163,7 @@ class Trainer:
             ensemble_dir = out_dir / "ensemble"
             ensemble_dir.mkdir(exist_ok=True, parents=True)
 
-            ensemble_pred = np.mean([_pred for _pred in results.values()], axis=0)
+            ensemble_pred = np.mean([data["pred"] for data in results.values()], axis=0)
             ensemble_scores = {
                 metric_name: metric(y_true=y_val, y_pred=ensemble_pred) for metric_name, metric in metrics.items()
             }
