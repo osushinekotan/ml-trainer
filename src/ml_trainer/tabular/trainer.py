@@ -1,4 +1,5 @@
 import json
+from logging import Logger
 from pathlib import Path
 from typing import Callable, Generator
 
@@ -30,6 +31,13 @@ MULTICLASS_METRICS = {"macro_auc": macro_roc_auc_score}
 TASK_TYPES = ["binary", "multiclass", "regression"]
 
 
+def log(message: str, logger: Logger | None = None) -> None:
+    if logger is not None:
+        logger.info(message)
+    else:
+        print(message)
+
+
 class Trainer:
     """Single Task Trainer for Tabular Data."""
 
@@ -48,6 +56,7 @@ class Trainer:
         task_type: str = "auto",
         eval_metrics: list[str] | None | str = "auto",
         custom_eval: Callable | None = None,
+        logger: Logger | None = None,
     ) -> None:
         self.estimators = estimators
         self.ensemble = ensemble
@@ -66,6 +75,7 @@ class Trainer:
         self.is_cv = False
 
         self.task_type = task_type
+        self.logger = logger
 
     def train(
         self,
@@ -95,8 +105,8 @@ class Trainer:
         task = self._judge_task(y_train)
         metrics = self.get_eval_metrics(task)
 
-        print(f"Estimator saving to: {out_dir}")
-        print(rf"[{task} metrics]: {[metric.__name__ for metric in metrics.values()]}")
+        log(f"Estimator saving to: {out_dir}", logger=self.logger)
+        log(rf"{task} metrics: {[metric.__name__ for metric in metrics.values()]}", logger=self.logger)
 
         resutls: dict = {}
         for estimator in self.estimators:
@@ -104,7 +114,7 @@ class Trainer:
             out_dir_est = out_dir / estimator_uid
             estimator_path = out_dir_est / "estimator.pkl"
 
-            print(rf"[{estimator_uid}] start training :rocket:")
+            log(rf"[{estimator_uid}] start training 🚀", logger=self.logger)
             estimator.fit(X_train=X_train, y_train=y_train, X_val=X_val, y_val=y_val)
             estimator.save(estimator_path)
 
@@ -114,7 +124,7 @@ class Trainer:
             scores = {metric_name: metric(y_true=y_val, y_pred=pred) for metric_name, metric in metrics.items()}
             json.dump(scores, open(out_dir_est / "scores.json", "w"), indent=4)
 
-            print(rf"[{estimator_uid}] scores: \n{json.dumps(scores, indent=4)}")
+            log(rf"[{estimator_uid}] scores: {json.dumps(scores, indent=4)}", logger=self.logger)
             resutls[estimator_uid] = {
                 "estimator": estimator,
                 "pred": pred,
@@ -134,7 +144,7 @@ class Trainer:
             joblib.dump(ensemble_pred, ensemble_dir / "pred.pkl")
             json.dump(ensemble_scores, open(ensemble_dir / "scores.json", "w"), indent=4)
 
-            print(f"[ensemble] scores: \n{json.dumps(ensemble_scores, indent=4)}")
+            log(f"[ensemble] scores: {json.dumps(ensemble_scores, indent=4)}", logger=self.logger)
             resutls["ensemble"] = {"pred": ensemble_pred, "scores": ensemble_scores}
 
         self.is_fitted = True
@@ -162,8 +172,8 @@ class Trainer:
             # NOTE : split_type が list の場合はそのリストに従って分割する splitter を作成
             folds = self._generate_folds(self.split_type)
             self.n_splits = len(np.unique(self.split_type))
-        elif isinstance(self.split_type, BaseCrossValidator):
-            folds = self.split_type(
+        elif issubclass(self.split_type, BaseCrossValidator):  # type: ignore
+            folds = self.split_type(  # type: ignore
                 n_splits=self.n_splits,
                 shuffle=True,
                 random_state=self.seed,
@@ -172,7 +182,7 @@ class Trainer:
             raise ValueError(f"Invalid split_type: {self.split_type}")
 
         task = self._judge_task(y_train)
-        print(rf"[{task}] Cross Validation: {self.n_splits} folds")
+        log(rf"[{task}] Cross Validation: {self.n_splits} folds", logger=self.logger)
 
         metrics = self.get_eval_metrics(task)
 
@@ -200,7 +210,7 @@ class Trainer:
             # oof scores
             scores = {metric_name: metric(y_true=y_train, y_pred=pred) for metric_name, metric in metrics.items()}
             json.dump(scores, open(result_dir / "scores.json", "w"), indent=4)
-            print(rf"[oof] [{est}] scores: \n{json.dumps(scores, indent=4)}")
+            log(rf"[oof] [{est}] scores: {json.dumps(scores, indent=4)}", logger=self.logger)
 
         return oof
 
@@ -216,7 +226,7 @@ class Trainer:
             dict[str, ArrayLike]: estimator ごとの予測値を格納した辞書。 {est1: pred, est2: pred, ...} の形式で出力される (pred: ArrayLike)。
         """
 
-        print(f"Estimator restoring from: {out_dir}")
+        log(f"Estimator restoring from: {out_dir}", logger=self.logger)
         out_dir = out_dir or self.out_dir
 
         resutls = {}
@@ -224,7 +234,7 @@ class Trainer:
             estimator_uid = estimator.uid
             estimator_dir = out_dir / estimator_uid
 
-            print(rf"[{estimator_uid}] start predicting :rocket:")
+            log(rf"[{estimator_uid}] start predicting 🚀", logger=self.logger)
             estimator.load(estimator_dir / "estimator.pkl")
 
             pred: ArrayLike = estimator.predict(X)
@@ -252,7 +262,7 @@ class Trainer:
         Returns:
             dict[str, ArrayLike]: estimator ごとの予測値を格納した辞書。fold ごとの平均予測値が出力される。
         """
-        print(f"Predict Cross Validation : {self.n_splits} folds.")
+        log(f"Predict Cross Validation : {self.n_splits} folds.", logger=self.logger)
         out_dir = out_dir or self.out_dir
 
         fold_results = {}
@@ -306,7 +316,7 @@ class Trainer:
         for fold in cv_results:
             for est, data in cv_results[fold].items():
                 scores = data["scores"]
-                print(rf"[fold{fold}] [{est}] scores: \n{json.dumps(scores, indent=4)}")
+                log(rf"[fold{fold}] [{est}] scores: {json.dumps(scores, indent=4)}", logger=self.logger)
                 if est not in oof_results:
                     oof_results[est] = list(data["pred"])
                 else:
