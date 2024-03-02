@@ -90,7 +90,21 @@ class Trainer:
         X_val: XyArrayLike,
         y_val: XyArrayLike,
         out_dir: Path | None = None,
-    ) -> None:
+    ) -> dict:
+        """
+        Train Estimators. (複数の) Estimator を学習し、保存する。
+        out_dir_est (out_dir / estimator_uid) に estimator ごとの結果が保存される。
+
+        Args:
+            X_train (XyArrayLike): 学習用の特徴量
+            y_train (XyArrayLike): 学習用の目的変数
+            X_val (XyArrayLike): 検証用の特徴量
+            y_val (XyArrayLike): 検証用の目的変数
+            out_dir (Path | None, optional): estimator や pred, scores の保存先. Defaults to None.
+
+        Returns:
+            dict: 学習結果を格納した辞書。 {estimator_uid: {"estimator": estimator, "pred": pred, "scores": scores}} の形式で出力される。
+        """
         if out_dir is not None:
             out_dir = self.out_dir
 
@@ -105,17 +119,18 @@ class Trainer:
         resutls: dict = {}
         for estimator in self.estimators:
             estimator_uid = estimator.uid
-            estimator_path = out_dir / estimator_uid / f"{estimator_uid}.pkl"
+            out_dir_est = out_dir / estimator_uid
+            estimator_path = out_dir_est / f"{estimator_uid}.pkl"
 
             console.print(f"[{estimator_uid}] start training :rocket:", style="bold blue")
             estimator.fit(X_train=X_train, y_train=y_train, X_val=X_val, y_val=y_val)
             estimator.save(estimator_path)
 
             pred = estimator.predict(X_val)
-            joblib.dump(pred, out_dir / estimator_uid / "pred.pkl")
+            joblib.dump(pred, out_dir_est / "pred.pkl")
 
             scores = {metric_name: metric(y_true=y_val, y_pred=pred) for metric_name, metric in metrics.items()}
-            json.dump(scores, open(out_dir / estimator_uid / "scores.json", "w"), indent=4)
+            json.dump(scores, open(out_dir_est / "scores.json", "w"), indent=4)
 
             console.print(f"[{estimator_uid}] scores: \n{json.dumps(scores, indent=4)}", style="bold blue")
             resutls[estimator_uid] = {
@@ -128,11 +143,22 @@ class Trainer:
         return resutls
 
     def cv(self, X_train: XyArrayLike, y_train: XyArrayLike) -> dict[str, ArrayLike]:
+        """Cross Validation.
+
+        Args:
+            X_train (XyArrayLike): 特徴量
+            y_train (XyArrayLike): 目的変数
+
+        Returns:
+            dict[str, ArrayLike]: estimator ごとの oof 予測値
+        """
         if isinstance(X_train, pd.DataFrame) or isinstance(X_train, pl.DataFrame):
+            # NOTE : split_type が "fold" かつ X_train が DataFrame の場合は fold カラムに従って分割する splitter を作成
             if self.split_type == "fold" and "fold" in X_train.columns:
                 folds = self._generate_folds(X_train["fold"])
                 self.n_splits = X_train["fold"].nunique()
         elif isinstance(self.split_type, list):
+            # NOTE : split_type が list の場合はそのリストに従って分割する splitter を作成
             folds = self._generate_folds(self.split_type)
             self.n_splits = len(np.unique(self.split_type))
         else:
@@ -157,6 +183,7 @@ class Trainer:
             fitted_resuts = self.train(X_tr, y_tr, X_va, y_va, out_dir=self.out_dir / f"fold{i_fold}")
             fold_fitted_results[f"fold{i_fold}"] = fitted_resuts
 
+        # NOTE : oof 予測値取得する eg. {est1: pred, est2: pred, ...} pred: ArrayLike
         oof = self.get_oof(fold_fitted_results)
         for est, pred in oof.items():
             result_dir = self.out_dir / "results" / est
@@ -171,6 +198,8 @@ class Trainer:
             console.print(f"[oof] [{est}] scores: \n{json.dumps(scores, indent=4)}", style="bold blue")
 
         if self.ensemble:
+            # NOTE : mean ensemble 予測値取得する
+            # TODO : weighed average や stacking など他のアンサンブル手法も実装したい
             console.print("Make mean ensemble OOF predictions from below estimators", style="bold green")
             console.print(f"Estimators: {list(oof.keys())}", style="bold green")
             emsemble_dir = self.out_dir / "results" / "ensemble"
@@ -185,9 +214,18 @@ class Trainer:
             json.dump(ensemble_scores, open(emsemble_dir / "scores.json", "w"), indent=4)
             console.print(f"[oof] [ensemble] scores: \n{json.dumps(ensemble_scores, indent=4)}", style="bold blue")
 
+            # NOTE : ensemble 使用時は mean_oof も返すことに注意
+            oof.update({"ensemble": mean_oof})
+            return oof
+
         return oof
 
     def get_oof(self, cv_results: dict) -> dict[str:ArrayLike]:
+        """Get Out Of Fold Prediction results.
+
+        Returns:
+            dict: estimator ごとの oof 予測値を格納した辞書。 {est1: pred, est2: pred, ...} の形式で出力される (pred: ArrayLike)。
+        """
         oof_results = {}  # {est1: pred, est2: pred, ...}
 
         for fold in cv_results:
