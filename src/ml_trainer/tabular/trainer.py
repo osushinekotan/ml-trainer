@@ -237,12 +237,13 @@ class Trainer:
 
         return oof_results
 
-    def predict(self, X: XyArrayLike, out_dir: Path | None = None) -> dict[str, ArrayLike]:
+    def predict(self, X: XyArrayLike, out_dir: Path | None = None, save: bool = False) -> dict[str, ArrayLike]:
         """Predict. (複数の) Estimator を使って予測を行う。
 
         Args:
             X (XyArrayLike): 予測用の特徴量
             out_dir (Path | None, optional): 学習ずみの Estimator が保存されているディレクトリ. Defaults to None.
+            save (bool, optional): 予測結果を out_dir に保存するかどうか. Defaults to False.
 
         Returns:
             dict[str, ArrayLike]: estimator ごとの予測値を格納した辞書。 {est1: pred, est2: pred, ...} の形式で出力される (pred: ArrayLike)。
@@ -253,23 +254,24 @@ class Trainer:
         resutls = {}
         for estimator in self.estimators:
             estimator_uid = estimator.uid
-            estimator_path = out_dir / estimator_uid / "estimator.pkl"
+            estimator_dir = out_dir / estimator_uid
 
             console.print(f"[{estimator_uid}] start predicting :rocket:", style="bold blue")
-            estimator.load(estimator_path)
+            estimator.load(estimator_dir / "estimator.pkl")
 
             pred = estimator.predict(X)
             resutls[estimator_uid] = pred
+            if save:
+                joblib.dump(pred, estimator_dir / "test_pred.pkl")
 
         if self.ensemble:
             # NOTE : mean ensemble 予測値取得する
             ensemble_pred = np.mean([_pred for _pred in resutls.values()], axis=0)
             resutls["ensemble"] = ensemble_pred
+            if save:
+                joblib.dump(pred, out_dir / "ensemble" / "test_pred.pkl")
 
         return resutls
-
-    def predict_ensemble(self):
-        pass
 
     def get_feature_importance(self):
         pass
