@@ -447,7 +447,13 @@ class Trainer:
 
         # NOTE : plot feature importance
         for est, df in feature_importances.items():
-            fig = self.make_feature_importance_fig(df, plot_type="auto", top_n=top_n, palette=palette)
+            fig = self.make_feature_importance_fig(
+                df,
+                plot_type="auto",
+                top_n=top_n,
+                palette=palette,
+                title=est,
+            )
             if save:
                 save_dir = out_dir / "results" / est
                 df.to_csv(save_dir / "feature_importance.csv", index=False)
@@ -461,6 +467,7 @@ class Trainer:
         plot_type: str = "auto",
         top_n: int | None = None,
         palette: str = "bwr_r",
+        title: str = "importance",
     ) -> Figure | pd.DataFrame:
         japanize_matplotlib.japanize()
 
@@ -500,7 +507,7 @@ class Trainer:
             raise NotImplementedError()
 
         ax.tick_params(axis="x", rotation=90)
-        ax.set_title("Importance")
+        ax.set_title(title)
         ax.grid()
         fig.tight_layout()
         return fig
