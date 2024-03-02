@@ -1,12 +1,15 @@
 import pandas as pd
 import polars as pl
 
-from src.tabular.types import XyArrayLike
+from ..types import XyArrayLike
 
 
 def reset_X(X: XyArrayLike, feature_names: list[str]) -> XyArrayLike:
     if isinstance(X, pd.DataFrame):
-        X = X[feature_names].reset_index(drop=True)
+        return X[feature_names].reset_index(drop=True)
     elif isinstance(X, pl.DataFrame):
-        X = X.select(feature_names)
-    return X
+        return X.select(feature_names)
+    else:
+        if X.shape != len(feature_names):
+            raise ValueError(f"X shape {X.shape} is not equal to feature_names length {len(feature_names)}")
+        return X
