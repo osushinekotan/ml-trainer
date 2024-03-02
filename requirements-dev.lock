@@ -12,6 +12,8 @@ appnope==0.1.4
     # via ipykernel
 asttokens==2.4.1
     # via stack-data
+catboost==1.2.3
+    # via ml-trainer
 cfgv==3.4.0
     # via pre-commit
 comm==0.2.1
@@ -32,6 +34,8 @@ filelock==3.13.1
     # via virtualenv
 fonttools==4.49.0
     # via matplotlib
+graphviz==0.20.1
+    # via catboost
 identify==2.5.35
     # via pre-commit
 iniconfig==2.0.0
@@ -57,6 +61,7 @@ lightgbm==4.3.0
 markdown-it-py==3.0.0
     # via rich
 matplotlib==3.8.3
+    # via catboost
     # via japanize-matplotlib
     # via seaborn
 matplotlib-inline==0.1.6
@@ -72,6 +77,7 @@ nest-asyncio==1.6.0
 nodeenv==1.8.0
     # via pre-commit
 numpy==1.26.4
+    # via catboost
     # via contourpy
     # via lightgbm
     # via matplotlib
@@ -79,11 +85,14 @@ numpy==1.26.4
     # via scikit-learn
     # via scipy
     # via seaborn
+    # via xgboost
 packaging==23.2
     # via ipykernel
     # via matplotlib
+    # via plotly
     # via pytest
 pandas==2.2.1
+    # via catboost
     # via ml-trainer
     # via seaborn
 parso==0.8.3
@@ -95,6 +104,8 @@ pillow==10.2.0
 platformdirs==4.2.0
     # via jupyter-core
     # via virtualenv
+plotly==5.19.0
+    # via catboost
 pluggy==1.4.0
     # via pytest
 polars==0.20.10
@@ -132,17 +143,22 @@ ruff==0.2.2
 scikit-learn==1.4.1.post1
     # via ml-trainer
 scipy==1.12.0
+    # via catboost
     # via lightgbm
     # via scikit-learn
+    # via xgboost
 seaborn==0.13.2
     # via ml-trainer
 setuptools==69.1.1
     # via nodeenv
 six==1.16.0
     # via asttokens
+    # via catboost
     # via python-dateutil
 stack-data==0.6.3
     # via ipython
+tenacity==8.2.3
+    # via plotly
 threadpoolctl==3.3.0
     # via scikit-learn
 tornado==6.4
@@ -163,3 +179,5 @@ virtualenv==20.25.1
     # via pre-commit
 wcwidth==0.2.13
     # via prompt-toolkit
+xgboost==2.0.3
+    # via ml-trainer
