@@ -385,10 +385,10 @@ class Trainer:
             dict: estimator ごとの fold ごとの予測値を集約した辞書。 {est1: pred, est2: pred, ...} の形式で出力される (pred: ArrayLike)。
         """
         # 各 est の fold ごとの pred 値を収集
-        fold_values = {est: [] for est in fold_results[fold_results.keys()][0]}  # type: ignore
+        fold_values = {est: [] for est in fold_results[list(fold_results.keys())[0]]}  # type: ignore
         for fold in fold_results:
             for est, data in fold_results[fold].items():  # type: ignore
-                fold_values[est].append(data["pred"])
+                fold_values[est].append(data)
 
         # 各 est の fold 平均を計算
         fold_means = {}
