@@ -520,6 +520,9 @@ class Trainer:
         snapshot = tuple([getattr(self, item) for item in self.snapshot_items])
         joblib.dump(snapshot, out_dir / f"{self.trainer_name}.pkl")
 
+        # scores_df もここで保存
+        self.scores_df.to_csv(out_dir / "scores.csv", index=False)
+
     @classmethod
     def load(cls, filepath: Path) -> "Trainer":
         """保存した snapshot items を classmethod で読み込む.
