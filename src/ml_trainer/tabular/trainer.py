@@ -41,9 +41,25 @@ def log(message: str, logger: Logger | None = None) -> None:
 class Trainer:
     """Single Task Trainer for Tabular Data."""
 
+    snapshot_items: list[str] = [
+        "estimators",
+        "ensemble",
+        "out_dir",
+        "split_type",
+        "n_splits",
+        "groups",
+        "seed",
+        "is_fitted",
+        "is_cv",
+        "eval_metrics",
+        "custom_eval",
+        "task_type",
+        "trainer_name",
+    ]
+
     def __init__(
         self,
-        estimators: list[EstimatorBase],  # lightgbm, etc
+        estimators: list[EstimatorBase] | None = None,  # lightgbm, etc
         ensemble: bool = False,
         out_dir: str | Path | None = None,
         # cross_validation params
@@ -53,6 +69,7 @@ class Trainer:
         n_splits: int = 5,
         groups: ArrayLike | None = None,
         seed: int | None = None,
+        trainer_name: str = "trainer",
         task_type: str = "auto",
         eval_metrics: list[str] | None | str = "auto",
         custom_eval: Callable | None = None,
@@ -61,7 +78,10 @@ class Trainer:
         self.estimators = estimators
         self.ensemble = ensemble
 
-        self.out_dir = Path(out_dir) or Path.cwd() / "output"  # type: ignore
+        if out_dir is None:
+            self.out_dir = Path.cwd() / "output"
+        else:
+            self.out_dir = Path(out_dir)
         self.out_dir.mkdir(exist_ok=True, parents=True)
 
         self.split_type = split_type
@@ -75,6 +95,7 @@ class Trainer:
         self.is_cv = False
 
         self.task_type = task_type
+        self.trainer_name = trainer_name
         self.logger = logger
 
     def train(
@@ -99,6 +120,9 @@ class Trainer:
         Returns:
             dict: 学習結果を格納した辞書。 {estimator_uid: {"estimator": estimator, "pred": pred, "scores": scores}} の形式で出力される。
         """
+        if self.estimators is None:
+            raise ValueError("estimators must be specified")
+
         out_dir = out_dir or self.out_dir
         out_dir.mkdir(exist_ok=True, parents=True)
 
@@ -109,6 +133,7 @@ class Trainer:
         log(rf"{task} metrics: {[metric.__name__ for metric in metrics.values()]}", logger=self.logger)
 
         resutls: dict = {}
+
         for estimator in self.estimators:
             estimator_uid = estimator.uid
             out_dir_est = out_dir / estimator_uid
@@ -225,6 +250,8 @@ class Trainer:
         Returns:
             dict[str, ArrayLike]: estimator ごとの予測値を格納した辞書。 {est1: pred, est2: pred, ...} の形式で出力される (pred: ArrayLike)。
         """
+        if self.estimators is None:
+            raise ValueError("estimators must be specified")
 
         log(f"Estimator restoring from: {out_dir}", logger=self.logger)
         out_dir = out_dir or self.out_dir
@@ -363,6 +390,9 @@ class Trainer:
                 estimator ごとの feature importance を格納した辞書。 {est1: importance_df, est2: importance_df, ...} の形式で出力される。
                 importance_df は feature_name, importance, fold のカラムを持つ DataFrame。
         """
+        if self.estimators is None:
+            raise ValueError("estimators must be specified")
+
         if not self.is_fitted:
             raise ValueError("Estimator is not fitted yet.")
 
@@ -448,31 +478,13 @@ class Trainer:
         fig.tight_layout()
         return fig
 
-    @property
-    def snapshot_items(self) -> list[str]:
-        return [
-            "estimators",
-            "ensemble",
-            "out_dir",
-            "feature_names",
-            "estimator_name",
-            "split_type",
-            "n_splits",
-            "groups",
-            "seed",
-            "kwargs",
-            "is_fitted",
-            "is_cv",
-            "eval_metrics",
-            "custom_eval",
-            "task_type",
-        ]
-
-    def save(self, filepath: Path) -> None:
+    def save(self, out_dir: Path | None = None) -> None:
         """snapshot items を保存する."""
-        filepath.parent.mkdir(exist_ok=True, parents=True)
+        out_dir = out_dir or self.out_dir
+        out_dir.mkdir(exist_ok=True, parents=True)
+
         snapshot = tuple([getattr(self, item) for item in self.snapshot_items])
-        joblib.dump(snapshot, filepath)
+        joblib.dump(snapshot, out_dir / f"{self.trainer_name}.pkl")
 
     @classmethod
     def load(cls, filepath: Path) -> "Trainer":
@@ -484,9 +496,11 @@ class Trainer:
             raise FileNotFoundError(f"{filepath} does not exist.")
 
         snapshot: list = joblib.load(filepath)
-        for item, value in zip(cls.snapshot_items, snapshot):  # type: ignore
-            setattr(cls, item, value)
-        return cls  # type: ignore
+        instance = cls()  # default 引数で初期化
+
+        for item, value in zip(cls.snapshot_items, snapshot):
+            setattr(instance, item, value)
+        return instance  # インスタンス化したものを返す
 
     def _generate_folds(self, fold_list: list | pd.Series) -> Generator:
         fold_series = pd.Series(fold_list)
