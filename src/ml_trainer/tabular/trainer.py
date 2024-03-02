@@ -68,31 +68,6 @@ class Trainer:
         self.is_fitted = False
         self.is_cv = False
 
-    def get_eval_metrics(self, task: str) -> dict[str, Callable]:
-        if self.eval_metrics is None:
-            if self.custom_eval is None:
-                raise ValueError("eval_metrics or custom_eval must be specified")
-            return {self.custom_eval.__name__: self.custom_eval}
-
-        metrics = {}
-        if task == "regression":
-            metrics = REGRESSION_METRICS
-        elif task == "binary":
-            metrics = BINARY_METRICS
-        elif task == "multiclass":
-            metrics = MULTICLASS_METRICS
-        else:
-            raise ValueError("Invalid task")
-
-        if isinstance(self.eval_metrics, list):
-            metrics = {key: metrics[key] for key in self.eval_metrics}
-            raise ValueError("Invalid eval_metrics")
-
-        if self.custom_eval is not None:
-            metrics[self.custom_eval.__name__] = self.custom_eval
-
-        return metrics
-
     def train(
         self,
         X_train: XyArrayLike,
@@ -227,28 +202,6 @@ class Trainer:
 
         return oof
 
-    def get_oof(self, cv_results: dict) -> dict[str:ArrayLike]:
-        """Get Out Of Fold Prediction results.
-
-        Returns:
-            dict: estimator ごとの oof 予測値を格納した辞書。 {est1: pred, est2: pred, ...} の形式で出力される (pred: ArrayLike)。
-        """
-        oof_results = {}  # {est1: pred, est2: pred, ...}
-
-        for fold in cv_results:
-            for est, data in cv_results[fold].items():
-                scores = data["scores"]
-                console.print(
-                    f"[fold{fold}] [{est}] scores: \n{json.dumps(scores, indent=4)}",
-                    style="bold blue",
-                )
-                if est not in oof_results:
-                    oof_results[est] = list(data["pred"])
-                else:
-                    oof_results[est].extend(list(data["pred"]))
-
-        return oof_results
-
     def predict(self, X: XyArrayLike, out_dir: Path | None = None, save: bool = False) -> dict[str, ArrayLike]:
         """Predict. (複数の) Estimator を使って予測を行う。
 
@@ -312,6 +265,53 @@ class Trainer:
                 result_dir.mkdir(exist_ok=True, parents=True)
                 joblib.dump(pred, result_dir / "test_pred.pkl")
         return fold_means
+
+    def get_eval_metrics(self, task: str) -> dict[str, Callable]:
+        if self.eval_metrics is None:
+            if self.custom_eval is None:
+                raise ValueError("eval_metrics or custom_eval must be specified")
+            return {self.custom_eval.__name__: self.custom_eval}
+
+        metrics = {}
+        if task == "regression":
+            metrics = REGRESSION_METRICS
+        elif task == "binary":
+            metrics = BINARY_METRICS
+        elif task == "multiclass":
+            metrics = MULTICLASS_METRICS
+        else:
+            raise ValueError("Invalid task")
+
+        if isinstance(self.eval_metrics, list):
+            metrics = {key: metrics[key] for key in self.eval_metrics}
+            raise ValueError("Invalid eval_metrics")
+
+        if self.custom_eval is not None:
+            metrics[self.custom_eval.__name__] = self.custom_eval
+
+        return metrics
+
+    def get_oof(self, cv_results: dict) -> dict[str:ArrayLike]:
+        """Get Out Of Fold Prediction results.
+
+        Returns:
+            dict: estimator ごとの oof 予測値を格納した辞書。 {est1: pred, est2: pred, ...} の形式で出力される (pred: ArrayLike)。
+        """
+        oof_results = {}  # {est1: pred, est2: pred, ...}
+
+        for fold in cv_results:
+            for est, data in cv_results[fold].items():
+                scores = data["scores"]
+                console.print(
+                    f"[fold{fold}] [{est}] scores: \n{json.dumps(scores, indent=4)}",
+                    style="bold blue",
+                )
+                if est not in oof_results:
+                    oof_results[est] = list(data["pred"])
+                else:
+                    oof_results[est].extend(list(data["pred"]))
+
+        return oof_results
 
     def get_fold_mean(self, fold_results: dict[str, ArrayLike]) -> dict[str, ArrayLike]:
         """Get Aggregated Prediction results.
