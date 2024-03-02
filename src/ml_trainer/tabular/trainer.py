@@ -120,7 +120,7 @@ class Trainer:
         for estimator in self.estimators:
             estimator_uid = estimator.uid
             out_dir_est = out_dir / estimator_uid
-            estimator_path = out_dir_est / f"{estimator_uid}.pkl"
+            estimator_path = out_dir_est / "estimator.pkl"
 
             console.print(f"[{estimator_uid}] start training :rocket:", style="bold blue")
             estimator.fit(X_train=X_train, y_train=y_train, X_val=X_val, y_val=y_val)
@@ -138,6 +138,22 @@ class Trainer:
                 "pred": pred,
                 "scores": scores,
             }
+
+        if self.ensemble:
+            # NOTE : mean ensemble 予測値取得する
+            # TODO : weighed average や stacking など他のアンサンブル手法も実装したい
+            ensemble_dir = out_dir / "ensemble"
+            ensemble_dir.mkdir(exist_ok=True, parents=True)
+
+            ensemble_pred = np.mean([_pred for _pred in resutls.values()], axis=0)
+            ensemble_scores = {
+                metric_name: metric(y_true=y_val, y_pred=ensemble_pred) for metric_name, metric in metrics.items()
+            }
+            joblib.dump(ensemble_pred, ensemble_dir / "pred.pkl")
+            json.dump(ensemble_scores, open(ensemble_dir / "scores.json", "w"), indent=4)
+
+            console.print(f"[ensemble] scores: \n{json.dumps(ensemble_scores, indent=4)}", style="bold blue")
+            resutls["ensemble"] = {"pred": ensemble_pred, "scores": ensemble_scores}
 
         self.is_fitted = True
         return resutls
@@ -197,27 +213,6 @@ class Trainer:
             json.dump(scores, open(result_dir / "scores.json", "w"), indent=4)
             console.print(f"[oof] [{est}] scores: \n{json.dumps(scores, indent=4)}", style="bold blue")
 
-        if self.ensemble:
-            # NOTE : mean ensemble 予測値取得する
-            # TODO : weighed average や stacking など他のアンサンブル手法も実装したい
-            console.print("Make mean ensemble OOF predictions from below estimators", style="bold green")
-            console.print(f"Estimators: {list(oof.keys())}", style="bold green")
-            emsemble_dir = self.out_dir / "results" / "ensemble"
-            emsemble_dir.mkdir(exist_ok=True, parents=True)
-
-            mean_oof = np.mean(list(oof.values()), axis=0)
-            joblib.dump(mean_oof, emsemble_dir / "pred.pkl")
-
-            ensemble_scores = {
-                metric_name: metric(y_true=y_train, y_pred=mean_oof) for metric_name, metric in metrics.items()
-            }
-            json.dump(ensemble_scores, open(emsemble_dir / "scores.json", "w"), indent=4)
-            console.print(f"[oof] [ensemble] scores: \n{json.dumps(ensemble_scores, indent=4)}", style="bold blue")
-
-            # NOTE : ensemble 使用時は mean_oof も返すことに注意
-            oof.update({"ensemble": mean_oof})
-            return oof
-
         return oof
 
     def get_oof(self, cv_results: dict) -> dict[str:ArrayLike]:
@@ -242,8 +237,36 @@ class Trainer:
 
         return oof_results
 
-    def predict(self):
-        pass
+    def predict(self, X: XyArrayLike, out_dir: Path | None = None) -> dict[str, ArrayLike]:
+        """Predict. (複数の) Estimator を使って予測を行う。
+
+        Args:
+            X (XyArrayLike): 予測用の特徴量
+            out_dir (Path | None, optional): 学習ずみの Estimator が保存されているディレクトリ. Defaults to None.
+
+        Returns:
+            dict[str, ArrayLike]: estimator ごとの予測値を格納した辞書。 {est1: pred, est2: pred, ...} の形式で出力される (pred: ArrayLike)。
+        """
+
+        console.print(f"Estimator restoring from: {out_dir}", style="bold green")
+
+        resutls = {}
+        for estimator in self.estimators:
+            estimator_uid = estimator.uid
+            estimator_path = out_dir / estimator_uid / "estimator.pkl"
+
+            console.print(f"[{estimator_uid}] start predicting :rocket:", style="bold blue")
+            estimator.load(estimator_path)
+
+            pred = estimator.predict(X)
+            resutls[estimator_uid] = pred
+
+        if self.ensemble:
+            # NOTE : mean ensemble 予測値取得する
+            ensemble_pred = np.mean([_pred for _pred in resutls.values()], axis=0)
+            resutls["ensemble"] = ensemble_pred
+
+        return resutls
 
     def predict_ensemble(self):
         pass
