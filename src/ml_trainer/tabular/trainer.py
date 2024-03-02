@@ -348,6 +348,7 @@ class Trainer:
         self,
         out_dir: Path | None = None,
         top_n: int | None = 50,
+        palette: str = "bwr_r",
         save: bool = True,
     ) -> dict[str, pd.DataFrame]:
         """Get Feature Importance.
@@ -389,8 +390,7 @@ class Trainer:
 
         # NOTE : plot feature importance
         for est, df in feature_importances.items():
-            fig = self.make_feature_importance_fig(df, plot_type="auto", top_n=top_n)
-            fig.show()
+            fig = self.make_feature_importance_fig(df, plot_type="auto", top_n=top_n, palette=palette)
             if save:
                 save_dir = out_dir / "results" / est
                 df.to_csv(save_dir / "feature_importance.csv", index=False)
@@ -403,6 +403,7 @@ class Trainer:
         feature_importance_df: pd.DataFrame,
         plot_type: str = "auto",
         top_n: int | None = None,
+        palette: str = "bwr_r",
     ) -> Figure | pd.DataFrame:
         japanize_matplotlib.japanize()
 
@@ -420,7 +421,7 @@ class Trainer:
             .index
         )
         if top_n is not None:
-            order = order[:top_n] or order
+            order = order[:top_n]
 
         fig, ax = plt.subplots(figsize=(12, max(6, len(order) * 0.25)))
         plot_params = dict(
@@ -429,7 +430,9 @@ class Trainer:
             y="feature",
             order=order,
             ax=ax,
-            palette="viridis",
+            hue_order=order,
+            hue="feature",
+            palette=palette,
             orient="h",
         )
         if plot_type == "boxen":
