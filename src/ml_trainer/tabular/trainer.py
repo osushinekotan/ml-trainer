@@ -1,6 +1,7 @@
 # type: ignore
 import json
 from pathlib import Path
+from typing import Callable
 
 import japanize_matplotlib
 import joblib
@@ -13,12 +14,12 @@ from matplotlib.figure import Figure
 from numpy.typing import ArrayLike
 from rich.console import Console
 from sklearn.metrics import mean_absolute_error, mean_absolute_percentage_error, roc_auc_score
-from sklearn.model_selection import KFold, _BaseKFold
+from sklearn.model_selection import BaseCrossValidator, KFold
 
-from src.ml_trainer.models.base import EstimatorBase
-from src.ml_trainer.tabular.evaluation.classification import macro_roc_auc_score
-from src.ml_trainer.tabular.evaluation.regression import root_mean_squared_error
-from src.ml_trainer.tabular.types import XyArrayLike
+from .evaluation.classification import macro_roc_auc_score
+from .evaluation.regression import root_mean_squared_error
+from .models.base import EstimatorBase
+from .types import XyArrayLike
 
 console = Console()
 REGRESSION_METRICS = {
@@ -40,12 +41,14 @@ class Trainer:
         ensemble: bool = False,
         out_dir: str | Path | None = None,
         # cross_validation params
-        split_type: _BaseKFold | str | list[int] = KFold,  # if "fold" then use "fold" columns in the X (DataFrame)
+        split_type: BaseCrossValidator
+        | str
+        | list[int] = KFold,  # if "fold" then use "fold" columns in the X (DataFrame)
         n_splits: int = 5,
         groups: ArrayLike | None = None,
         seed: int | None = None,
         eval_metrics: list[str] | None | str = "auto",
-        custom_eval: callable | None = None,
+        custom_eval: Callable | None = None,
         **kwargs,
     ) -> None:
         self.estimators = estimators
@@ -65,7 +68,7 @@ class Trainer:
         self.is_fitted = False
         self.is_cv = False
 
-    def get_eval_metrics(self, task: str) -> dict[str, callable]:
+    def get_eval_metrics(self, task: str) -> dict[str, Callable]:
         if self.eval_metrics is None:
             if self.custom_eval is None:
                 raise ValueError("eval_metrics or custom_eval must be specified")

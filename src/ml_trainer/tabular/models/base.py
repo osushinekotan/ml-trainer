@@ -5,8 +5,8 @@ import joblib
 import numpy as np
 import pandas as pd
 
-from src.ml_trainer.tabular.types import XyArrayLike
-from src.ml_trainer.tabular.utils.utils import generate_uid
+from ..types import XyArrayLike
+from ..utils.utils import generate_uid
 
 
 class EstimatorBase(ABC):
@@ -38,7 +38,7 @@ class EstimatorBase(ABC):
         return f"{estimator_name}_{base_uid}"
 
     @property
-    def snapshot_items(self):
+    def snapshot_items(self) -> list:
         return [
             "model",
             "params",
