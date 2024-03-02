@@ -30,9 +30,8 @@ class EstimatorBase(ABC):
     def get_feature_importance(self) -> pd.DataFrame:
         pass
 
-    @property
-    def uid(self) -> str:
-        uid_sources = [getattr(self, item) for item in self.snapshot_items]
+    def make_uid(self) -> str:
+        uid_sources = [getattr(self, item) for item in self.snapshot_items if item != "model"]
         base_uid = generate_uid(*uid_sources)
         estimator_name = getattr(self, "estimator_name")
         return f"{estimator_name}_{base_uid}"

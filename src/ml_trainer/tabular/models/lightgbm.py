@@ -23,6 +23,8 @@ class LightGBMModel(EstimatorBase):
         self.feature_names = feature_names
         self.estimator_name = estimator_name
 
+        self.uid = self.make_uid()
+
     def fit(self, X_train: XyArrayLike, y_train: XyArrayLike, X_val: XyArrayLike, y_val: XyArrayLike) -> None:
         X_train = reset_X(X_train, self.feature_names)
         X_val = reset_X(X_val, self.feature_names)
