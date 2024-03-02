@@ -12,16 +12,16 @@ import polars as pl
 import seaborn as sns
 from matplotlib.figure import Figure
 from numpy.typing import ArrayLike
-from rich.console import Console
-from sklearn.metrics import mean_absolute_error, mean_absolute_percentage_error, roc_auc_score
+
+# from rich import print
+from sklearn.metrics import mean_absolute_error, mean_absolute_percentage_error, roc_auc_score, root_mean_squared_error
 from sklearn.model_selection import BaseCrossValidator, KFold
+from sklearn.utils.multiclass import type_of_target
 
 from .evaluation.classification import macro_roc_auc_score
-from .evaluation.regression import root_mean_squared_error
 from .models.base import EstimatorBase
 from .types import XyArrayLike
 
-console = Console()
 REGRESSION_METRICS = {
     "rmse": root_mean_squared_error,
     "mae": mean_absolute_error,
@@ -30,6 +30,7 @@ REGRESSION_METRICS = {
 
 BINARY_METRICS = {"auc": roc_auc_score}
 MULTICLASS_METRICS = {"macro_auc": macro_roc_auc_score}
+TASK_TYPES = ["binary", "multiclass", "regression"]
 
 
 class Trainer:
@@ -47,6 +48,7 @@ class Trainer:
         n_splits: int = 5,
         groups: ArrayLike | None = None,
         seed: int | None = None,
+        task_type: str = "auto",
         eval_metrics: list[str] | None | str = "auto",
         custom_eval: Callable | None = None,
         **kwargs,
@@ -67,6 +69,8 @@ class Trainer:
         self.kwargs = kwargs
         self.is_fitted = False
         self.is_cv = False
+
+        self.task_type = task_type
 
     def train(
         self,
@@ -93,11 +97,11 @@ class Trainer:
         out_dir = out_dir or self.out_dir
         out_dir.mkdir(exist_ok=True, parents=True)
 
-        task = self.judge_task(y_train)
+        task = self._judge_task(y_train)
         metrics = self.get_eval_metrics(task)
 
-        console.print(f"Estimator saving to: {out_dir}", style="bold green")
-        console.print(f"[{task} Metrics]: \n{metrics}", style="bold green")
+        print(f"Estimator saving to: {out_dir}")
+        print(rf"[{task} metrics]: {[metric.__name__ for metric in metrics.values()]}")
 
         resutls: dict = {}
         for estimator in self.estimators:
@@ -105,7 +109,7 @@ class Trainer:
             out_dir_est = out_dir / estimator_uid
             estimator_path = out_dir_est / "estimator.pkl"
 
-            console.print(f"[{estimator_uid}] start training :rocket:", style="bold blue")
+            print(rf"[{estimator_uid}] start training :rocket:")
             estimator.fit(X_train=X_train, y_train=y_train, X_val=X_val, y_val=y_val)
             estimator.save(estimator_path)
 
@@ -115,7 +119,7 @@ class Trainer:
             scores = {metric_name: metric(y_true=y_val, y_pred=pred) for metric_name, metric in metrics.items()}
             json.dump(scores, open(out_dir_est / "scores.json", "w"), indent=4)
 
-            console.print(f"[{estimator_uid}] scores: \n{json.dumps(scores, indent=4)}", style="bold blue")
+            print(rf"[{estimator_uid}] scores: \n{json.dumps(scores, indent=4)}")
             resutls[estimator_uid] = {
                 "estimator": estimator,
                 "pred": pred,
@@ -135,7 +139,7 @@ class Trainer:
             joblib.dump(ensemble_pred, ensemble_dir / "pred.pkl")
             json.dump(ensemble_scores, open(ensemble_dir / "scores.json", "w"), indent=4)
 
-            console.print(f"[ensemble] scores: \n{json.dumps(ensemble_scores, indent=4)}", style="bold blue")
+            print(f"[ensemble] scores: \n{json.dumps(ensemble_scores, indent=4)}")
             resutls["ensemble"] = {"pred": ensemble_pred, "scores": ensemble_scores}
 
         self.is_fitted = True
@@ -153,11 +157,12 @@ class Trainer:
         """
         self.is_cv = True
 
-        if isinstance(X_train, pd.DataFrame) or isinstance(X_train, pl.DataFrame):
-            # NOTE : split_type が "fold" かつ X_train が DataFrame の場合は fold カラムに従って分割する splitter を作成
-            if self.split_type == "fold" and "fold" in X_train.columns:
-                folds = self._generate_folds(X_train["fold"])
-                self.n_splits = X_train["fold"].nunique()
+        # NOTE : split_type が "fold" かつ X_train が DataFrame の場合は fold カラムに従って分割する splitter を作成
+        if self.split_type == "fold":
+            assert isinstance(X_train, pd.DataFrame) or isinstance(X_train, pl.DataFrame), "X_train must be DataFrame"
+            assert "fold" in X_train.columns, "X_train must have 'fold' column"
+            folds = self._generate_folds(X_train["fold"])
+            self.n_splits = X_train["fold"].nunique()
         elif isinstance(self.split_type, list):
             # NOTE : split_type が list の場合はそのリストに従って分割する splitter を作成
             folds = self._generate_folds(self.split_type)
@@ -169,8 +174,8 @@ class Trainer:
                 random_state=self.seed,
             ).split(X_train, y_train, groups=self.groups)
 
-        task = self.judge_task(y_train)
-        console.print(f"[{task}] Cross Validation: {self.n_splits} folds", style="bold green")
+        task = self._judge_task(y_train)
+        print(rf"[{task}] Cross Validation: {self.n_splits} folds")
 
         metrics = self.get_eval_metrics(task)
 
@@ -180,8 +185,8 @@ class Trainer:
             val_mask = np.zeros(len(X_train), dtype=bool)
             val_mask[va_idx] = True
 
-            X_tr, X_va = X_train[tr_idx].copy(), X_train[va_idx].copy()
-            y_tr, y_va = y_train[tr_idx].copy(), y_train[va_idx].copy()
+            X_tr, y_tr = X_train[~val_mask].copy(), y_train[~val_mask].copy()
+            X_va, y_va = X_train[val_mask].copy(), y_train[val_mask].copy()
 
             fitted_resuts = self.train(X_tr, y_tr, X_va, y_va, out_dir=self.out_dir / f"fold{i_fold}")
             fold_fitted_results[f"fold{i_fold}"] = fitted_resuts
@@ -198,7 +203,7 @@ class Trainer:
             # oof scores
             scores = {metric_name: metric(y_true=y_train, y_pred=pred) for metric_name, metric in metrics.items()}
             json.dump(scores, open(result_dir / "scores.json", "w"), indent=4)
-            console.print(f"[oof] [{est}] scores: \n{json.dumps(scores, indent=4)}", style="bold blue")
+            print(rf"[oof] [{est}] scores: \n{json.dumps(scores, indent=4)}")
 
         return oof
 
@@ -214,14 +219,14 @@ class Trainer:
             dict[str, ArrayLike]: estimator ごとの予測値を格納した辞書。 {est1: pred, est2: pred, ...} の形式で出力される (pred: ArrayLike)。
         """
 
-        console.print(f"Estimator restoring from: {out_dir}", style="bold green")
+        print(f"Estimator restoring from: {out_dir}")
 
         resutls = {}
         for estimator in self.estimators:
             estimator_uid = estimator.uid
             estimator_dir = out_dir / estimator_uid
 
-            console.print(f"[{estimator_uid}] start predicting :rocket:", style="bold blue")
+            print(rf"[{estimator_uid}] start predicting :rocket:")
             estimator.load(estimator_dir / "estimator.pkl")
 
             pred = estimator.predict(X)
@@ -249,7 +254,7 @@ class Trainer:
         Returns:
             dict[str, ArrayLike]: estimator ごとの予測値を格納した辞書。fold ごとの平均予測値が出力される。
         """
-        console.print(f"Predict Cross Validation : {self.n_splits} folds.", style="bold green")
+        print(f"Predict Cross Validation : {self.n_splits} folds.")
 
         fold_results = {}
         for i_fold in range(self.n_splits):
@@ -302,10 +307,7 @@ class Trainer:
         for fold in cv_results:
             for est, data in cv_results[fold].items():
                 scores = data["scores"]
-                console.print(
-                    f"[fold{fold}] [{est}] scores: \n{json.dumps(scores, indent=4)}",
-                    style="bold blue",
-                )
+                print(rf"[fold{fold}] [{est}] scores: \n{json.dumps(scores, indent=4)}")
                 if est not in oof_results:
                     oof_results[est] = list(data["pred"])
                 else:
@@ -451,6 +453,7 @@ class Trainer:
             "is_cv",
             "eval_metrics",
             "custom_eval",
+            "task_type",
         ]
 
     def save(self, filepath: Path) -> None:
@@ -480,10 +483,19 @@ class Trainer:
             train_idx = fold_series[fold_series != fold].index
             yield train_idx, test_idx
 
-    def judge_task(self, y: ArrayLike) -> str:
-        if len(np.unique(y)) == 2:
+    def _judge_task(self, y: ArrayLike) -> str:
+        if self.task_type != "auto":
+            if self.task_type not in TASK_TYPES:
+                raise ValueError(f"Invalid task type: {self.task_type}")
+            return self.task_type
+
+        # NOTE : auto なら自動で task type を判定
+        task_type = type_of_target(y)
+        if task_type == "binary":
             return "binary"
-        elif len(np.unique(y)) > 2:
+        elif task_type == "multiclass":
             return "multiclass"
-        else:
+        elif task_type == "continuous":
             return "regression"
+        else:
+            raise ValueError(f"Invalid task type: {task_type}")
