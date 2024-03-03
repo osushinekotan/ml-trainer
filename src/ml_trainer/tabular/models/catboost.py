@@ -61,6 +61,7 @@ class CatBoostModel(EstimatorBase):
             preds = self.model.predict_proba(X)
             if preds.shape[1] == 2:
                 return preds[:, 1]
+            return preds
         return self.model.predict(X)
 
     def get_feature_importance(self) -> pd.DataFrame:
