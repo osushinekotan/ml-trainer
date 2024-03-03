@@ -75,11 +75,10 @@ class LinearRegressionModel(EstimatorBase):
 
     def get_feature_importance(self) -> pd.DataFrame:
         """Feature importance はないので係数を返す。"""
-        assert len(self.feature_names) == len(self.model.coef_)
-        importance_df = pd.DataFrame(
-            {
-                "feature": self.feature_names,
-                "importance": self.model.coef_,
-            }
-        )
+
+        if (coef := self.model.coef_).ndim >= 2:
+            coef = coef[0]  # binary の場合は 2次元になる
+            # TODO : multiclass の場合の処理
+        assert len(self.feature_names) == len(coef)
+        importance_df = pd.DataFrame({"feature": self.feature_names, "importance": coef})
         return importance_df
