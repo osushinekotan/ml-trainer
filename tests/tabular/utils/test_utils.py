@@ -1,3 +1,4 @@
+import lightgbm as lgb
 import pytest
 
 from src.ml_trainer.tabular.utils.utils import generate_uid
@@ -12,6 +13,20 @@ from src.ml_trainer.tabular.utils.utils import generate_uid
         ({"test": 1},),  # from dict
         (["test", 1],),  # from list
         (lambda x="dummy": x,),  # from function
+        (
+            {
+                "callbacks": [
+                    lgb.callback._EarlyStoppingCallback(
+                        stopping_rounds=10,
+                        verbose=True,
+                    ),
+                    lgb.callback._LogEvaluationCallback(
+                        period=10,
+                        show_stdv=True,
+                    ),
+                ]
+            },
+        ),
     ],
 )
 def test_can_generate_uid(args):  # noqa
@@ -28,6 +43,20 @@ def test_can_generate_uid(args):  # noqa
         ({"test": 1},),
         (["test", 1],),
         (lambda x="dummy": x,),
+        (
+            {
+                "callbacks": [
+                    lgb.callback._EarlyStoppingCallback(
+                        stopping_rounds=10,
+                        verbose=True,
+                    ),
+                    lgb.callback._LogEvaluationCallback(
+                        period=10,
+                        show_stdv=True,
+                    ),
+                ]
+            },
+        ),
     ],
 )
 def test_generate_uid_is_consistent(args):  # noqa
