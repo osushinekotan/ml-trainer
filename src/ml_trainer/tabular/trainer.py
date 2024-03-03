@@ -3,22 +3,24 @@ from logging import Logger
 from pathlib import Path
 from typing import Callable, Generator
 
-import japanize_matplotlib
 import joblib
-import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 import polars as pl
-import seaborn as sns
-from matplotlib.figure import Figure
 from numpy.typing import ArrayLike
-from sklearn.metrics import log_loss, mean_absolute_error, mean_absolute_percentage_error, root_mean_squared_error
+from sklearn.metrics import (
+    log_loss,
+    mean_absolute_error,
+    mean_absolute_percentage_error,
+    root_mean_squared_error,
+)
 from sklearn.model_selection import BaseCrossValidator, KFold
 from sklearn.utils.multiclass import type_of_target
 
 from .evaluation.classification import macro_roc_auc_score, opt_acc_score, opt_f1_score
 from .models.base import EstimatorBase
 from .types import XyArrayLike
+from .visualization import make_feature_importance_fig
 
 REGRESSION_METRICS = {
     "rmse": root_mean_squared_error,
@@ -460,7 +462,7 @@ class Trainer:
 
         # NOTE : plot feature importance
         for est, df in feature_importances.items():
-            fig = self.make_feature_importance_fig(
+            fig = make_feature_importance_fig(
                 df,
                 plot_type="auto",
                 top_n=top_n,
@@ -473,57 +475,6 @@ class Trainer:
                 fig.savefig(save_dir / "feature_importance.png", dpi=300)
 
         return feature_importances
-
-    def make_feature_importance_fig(
-        self,
-        feature_importance_df: pd.DataFrame,
-        plot_type: str = "auto",
-        top_n: int | None = None,
-        palette: str = "bwr_r",
-        title: str = "importance",
-    ) -> Figure | pd.DataFrame:
-        japanize_matplotlib.japanize()
-
-        if plot_type == "auto":
-            # NOTE : fold ユニーク数が 1 なら bar, 2 以上なら boxen
-            plot_type = "boxen" if feature_importance_df["fold"].nunique() > 1 else "bar"
-
-        if plot_type not in ["boxen", "bar"]:
-            raise ValueError("Invalid plot_type")
-
-        order = (
-            feature_importance_df.groupby("feature")
-            .sum()[["importance"]]
-            .sort_values("importance", ascending=False)
-            .index
-        )
-        if top_n is not None:
-            order = order[:top_n]
-
-        fig, ax = plt.subplots(figsize=(12, max(6, len(order) * 0.25)))
-        plot_params = dict(
-            data=feature_importance_df,
-            x="importance",
-            y="feature",
-            order=order,
-            ax=ax,
-            hue_order=order,
-            hue="feature",
-            palette=palette,
-            orient="h",
-        )
-        if plot_type == "boxen":
-            sns.boxenplot(**plot_params)
-        elif plot_type == "bar":
-            sns.barplot(**plot_params)
-        else:
-            raise NotImplementedError()
-
-        ax.tick_params(axis="x", rotation=90)
-        ax.set_title(title)
-        ax.grid()
-        fig.tight_layout()
-        return fig
 
     def save(self, out_dir: Path | None = None) -> None:
         """snapshot items を保存する."""
