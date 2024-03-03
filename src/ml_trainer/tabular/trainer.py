@@ -26,7 +26,7 @@ from .evaluation.classification import (
 )
 from .models.base import EstimatorBase
 from .types import XyArrayLike
-from .visualization import make_confusion_matrix_fig, make_feature_importance_fig
+from .visualization import make_confusion_matrix_fig, make_distribution_fig, make_feature_importance_fig
 
 REGRESSION_METRICS = {
     "rmse": root_mean_squared_error,
@@ -250,6 +250,7 @@ class Trainer:
 
         fold_fitted_results = {}
         va_orders = []
+        fold_orders = []
         for i_fold, (tr_idx, va_idx) in enumerate(folds):
             # dataframe と array に対応
             val_mask = np.zeros(len(X_train), dtype=bool)
@@ -261,6 +262,7 @@ class Trainer:
             fitted_resuts = self.train(X_tr, y_tr, X_va, y_va, out_dir=self.out_dir / f"fold{i_fold}")
             fold_fitted_results[f"fold{i_fold}"] = fitted_resuts
             va_orders.extend(list(va_idx))
+            fold_orders.extend([i_fold] * len(va_idx))
 
         # NOTE : oof 予測値取得する eg. {est1: pred, est2: pred, ...} pred: ArrayLike
         oof = self.get_oof(fold_fitted_results, orders=va_orders)
@@ -281,6 +283,15 @@ class Trainer:
         self.scores_df = pd.concat(
             [self.scores_df, self.make_socres_df(oof_results, name="oof")],
         ).reset_index(drop=True)
+
+        if task in ["regression", "binary"]:
+            # NOTE : 予測と target が一次元の場合は分布をプロットする (regression, binary)
+            # TODO : train_cv 外に出す
+            self.make_plot_distribution(
+                oof=oof,
+                y=y_train,
+                fold=np.array(fold_orders)[np.argsort(va_orders)],  # type: ignore,
+            )
 
         return oof
 
@@ -535,6 +546,31 @@ class Trainer:
             )
             if save:
                 fig.savefig(estimator_dir / "confusion_matrix.png", dpi=300)
+
+    def make_plot_distribution(
+        self,
+        oof: dict[str, ArrayLike],
+        y: ArrayLike,
+        fold: ArrayLike,
+        result_dir: Path | None = None,
+        save: bool = True,
+    ) -> None:
+        if result_dir is None:
+            result_dir = self.out_dir / "results"
+
+        for est, pred in oof.items():
+            df = pd.DataFrame({"fold": fold, "pred": pred, "y": y})
+
+            estimator_dir = result_dir / est
+            fig = make_distribution_fig(
+                df=df,
+                y_col="y",
+                pred_col="pred",
+                fold_col="fold",
+                title=est,
+            )
+            if save:
+                fig.savefig(estimator_dir / "distribution.png", dpi=300)
 
     def save(self, out_dir: Path | None = None) -> None:
         """snapshot items を保存する."""

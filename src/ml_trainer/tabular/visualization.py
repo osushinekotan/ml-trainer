@@ -110,3 +110,55 @@ def make_confusion_matrix_fig(
     ax.set_title(title + (" (Normalized)" if normalize else ""))
 
     return fig
+
+
+def make_distribution_fig(
+    df: pd.DataFrame,
+    y_col: str,
+    pred_col: str,
+    fold_col: str,
+    title: str = "Distribution",
+) -> Figure:
+    """Plots the distribution of predictions for each fold and the overall distribution of y.
+
+    Args:
+        df (pd.DataFrame): The DataFrame containing the data.
+        y_col (str): The name of the column in df for the y values.
+        pred_col (str): The name of the column in df for the prediction values.
+        fold_col (str): The name of the column in df for the fold numbers.
+        title (str, optional): The title of the plot. Defaults to "Distribution".
+
+    Returns:
+        Figure: A matplotlib Figure object with the plots.
+    """
+    sns.set_style("whitegrid")
+    fig, ax = plt.subplots(figsize=(10, 6))
+
+    # foldごとの分布をプロット
+    folds = sorted(df[fold_col].unique())
+    palette = sns.color_palette("hsv", len(folds))
+    for i, fold in enumerate(folds):
+        sns.kdeplot(
+            df[df[fold_col] == fold][pred_col],
+            color=palette[i],
+            label=f"Fold {fold} {pred_col}",
+            bw_adjust=1.5,
+            ax=ax,
+        )
+
+    # y全体の分布をプロット
+    sns.kdeplot(
+        df[y_col],
+        color="black",
+        linestyle="--",
+        label=f"Overall {y_col}",
+        bw_adjust=1.5,
+        ax=ax,  # このaxを指定
+    )
+
+    ax.set_title(title)
+    ax.set_xlabel("Value")
+    ax.set_ylabel("Density")
+
+    ax.legend()
+    return fig
