@@ -11,7 +11,7 @@ def transform_proba_to_label(proba: NDArray, threshold: float = 0.5) -> NDArray:
     if proba.ndim > 1:
         return np.argmax(proba, axis=1)
 
-    if type_of_target(proba) == "binary":
-        return (proba >= threshold).astype(int)
+    if type_of_target(proba) in ["binary", "multiclass"]:
+        return proba
 
-    return proba
+    return (proba >= threshold).astype(int)
