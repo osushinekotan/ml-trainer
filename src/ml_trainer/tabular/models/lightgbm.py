@@ -4,6 +4,7 @@ from numpy.typing import ArrayLike
 
 from ..types import XyArrayLike
 from ..utils.model_utils import reset_X
+from ..utils.utils import generate_uid
 from .base import EstimatorBase
 
 
@@ -27,6 +28,24 @@ class LightGBMModel(EstimatorBase):
         self.estimator_name = estimator_name
 
         self.uid = self.make_uid()
+
+    def make_uid(self) -> str:
+        uid_sources = [
+            self.params,
+            self.feature_names,
+            self.estimator_name,
+        ]
+        for key, value in self.fit_params.items():
+            if "callbacks" == key:
+                for callback in self.fit_params["callbacks"]:
+                    uid_sources.append(callback.__class__.__name__)
+                    uid_sources.append(callback.__dict__)
+            else:
+                uid_sources.append(value)
+
+        base_uid = generate_uid(*uid_sources)
+        estimator_name = getattr(self, "estimator_name")
+        return f"{estimator_name}_{base_uid}"
 
     def fit(self, X_train: XyArrayLike, y_train: XyArrayLike, X_val: XyArrayLike, y_val: XyArrayLike) -> None:
         X_train = reset_X(X_train, self.feature_names)
