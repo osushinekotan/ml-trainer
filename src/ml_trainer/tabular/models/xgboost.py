@@ -19,12 +19,14 @@ class XGBoostModel(EstimatorBase):
         params: dict = {},
         fit_params: dict = {},
         estimator_name: str = "xgboost",
+        use_cache: bool = False,
     ) -> None:
         self.model = XGBModel(**params)
         self.params = params
         self.fit_params = fit_params
         self.feature_names = feature_names
         self.estimator_name = estimator_name
+        self.use_cache = use_cache
 
         self.uid = self.make_uid()
 

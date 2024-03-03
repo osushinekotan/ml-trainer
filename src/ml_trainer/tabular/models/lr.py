@@ -25,6 +25,7 @@ class LinearRegressionModel(EstimatorBase):
         params: dict = {},
         fit_params: dict = {},
         estimator_name: str = "ridge",
+        use_cache: bool = False,
     ) -> None:
         self.estimator_name = estimator_name
 
@@ -50,6 +51,7 @@ class LinearRegressionModel(EstimatorBase):
         self.params = params
         self.fit_params = fit_params
         self.feature_names = feature_names
+        self.use_cache = use_cache
 
         self.uid = self.make_uid()
 

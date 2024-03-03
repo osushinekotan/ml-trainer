@@ -15,6 +15,7 @@ class EstimatorBase(ABC):
     # NOTE : 継承先の initializer で設定する. e.g. self.uid = self.make_uid()
     # すべての派生クラスで uid が使用される
     uid: str  # unique identifier for the model
+    use_cache: bool  # whether to use cache or not
 
     @abstractmethod
     def fit(
