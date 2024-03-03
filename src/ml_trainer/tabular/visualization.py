@@ -78,7 +78,7 @@ def make_confusion_matrix_fig(
     normalize: bool = False,
     cmap: str = "bwr_r",
 ) -> Figure:
-    """_summary_
+    """混同行列を可視化する.
 
     Args:
         y_true (ArrayLike): 正解ラベル
