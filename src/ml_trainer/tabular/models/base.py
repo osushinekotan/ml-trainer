@@ -12,6 +12,10 @@ from ..utils.utils import generate_uid
 class EstimatorBase(ABC):
     """abstract class for all models."""
 
+    # NOTE : 継承先の initializer で設定する. e.g. self.uid = self.make_uid()
+    # すべての派生クラスで uid が使用される
+    uid: str  # unique identifier for the model
+
     @abstractmethod
     def fit(
         self,
