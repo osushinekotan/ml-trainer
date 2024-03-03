@@ -147,6 +147,19 @@ class Trainer:
             out_dir_est = out_dir / estimator_uid
             estimator_path = out_dir_est / "estimator.pkl"
 
+            if estimator.use_cache and estimator_path.exists():
+                # NOTE : use_cache かつ既に学習済みの場合はロードする
+                log(f"Estimator restoring from: {estimator_path}", logger=self.logger)
+                estimator.load(estimator_path)
+                pred = joblib.load(out_dir_est / "pred.pkl")
+                scores = json.load(open(out_dir_est / "scores.json", "r"))
+                results[estimator_uid] = {
+                    "estimator": estimator,
+                    "pred": pred,
+                    "scores": scores,
+                }
+                continue
+
             log(rf"[{estimator_uid}] start training 🚀", logger=self.logger)
             estimator.fit(X_train=X_train, y_train=y_train, X_val=X_val, y_val=y_val)
             estimator.save(estimator_path)
@@ -379,7 +392,7 @@ class Trainer:
         for fold in cv_results:
             for est, data in cv_results[fold].items():
                 scores = data["scores"]
-                log(rf"[fold{fold}] [{est}] scores: {json.dumps(scores, indent=4)}", logger=self.logger)
+                log(rf"[{fold}] [{est}] scores: {json.dumps(scores, indent=4)}", logger=self.logger)
                 if est not in oof_results:
                     oof_results[est] = list(data["pred"])
                 else:
