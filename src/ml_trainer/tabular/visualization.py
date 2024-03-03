@@ -77,6 +77,7 @@ def make_confusion_matrix_fig(
     y_pred: NDArray,
     normalize: bool = False,
     cmap: str = "bwr_r",
+    title: str = "Confusion Matrix",
 ) -> Figure:
     """混同行列を可視化する.
 
@@ -103,10 +104,9 @@ def make_confusion_matrix_fig(
     fig_height = 6 + max(0, num_labels - 10)
     fig, ax = plt.subplots(figsize=(fig_width, fig_height))
 
-    fig, ax = plt.subplots(figsize=(10, 8))
     sns.heatmap(cm, annot=True, fmt=".2f" if normalize else "d", cmap=cmap, ax=ax)
     ax.set_ylabel("True label")
     ax.set_xlabel("Predicted label")
-    ax.set_title("Confusion Matrix" + (" (Normalized)" if normalize else ""))
+    ax.set_title(title + (" (Normalized)" if normalize else ""))
 
     return fig
