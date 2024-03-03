@@ -12,11 +12,11 @@ import polars as pl
 import seaborn as sns
 from matplotlib.figure import Figure
 from numpy.typing import ArrayLike
-from sklearn.metrics import mean_absolute_error, mean_absolute_percentage_error, roc_auc_score, root_mean_squared_error
+from sklearn.metrics import log_loss, mean_absolute_error, mean_absolute_percentage_error, root_mean_squared_error
 from sklearn.model_selection import BaseCrossValidator, KFold
 from sklearn.utils.multiclass import type_of_target
 
-from .evaluation.classification import macro_roc_auc_score
+from .evaluation.classification import macro_roc_auc_score, opt_acc_score, opt_f1_score
 from .models.base import EstimatorBase
 from .types import XyArrayLike
 
@@ -26,7 +26,12 @@ REGRESSION_METRICS = {
     "mape": mean_absolute_percentage_error,
 }
 
-BINARY_METRICS = {"auc": roc_auc_score}
+BINARY_METRICS = {
+    "loglogss": log_loss,
+    "auc": macro_roc_auc_score,
+    "opt_acc": opt_acc_score,
+    "opt_f1": opt_f1_score,
+}
 MULTICLASS_METRICS = {"macro_auc": macro_roc_auc_score}
 TASK_TYPES = ["binary", "multiclass", "regression"]
 
@@ -216,6 +221,7 @@ class Trainer:
         metrics = self.get_eval_metrics(task)
 
         fold_fitted_results = {}
+        va_orders = []
         for i_fold, (tr_idx, va_idx) in enumerate(folds):
             # dataframe と array に対応
             val_mask = np.zeros(len(X_train), dtype=bool)
@@ -226,9 +232,10 @@ class Trainer:
 
             fitted_resuts = self.train(X_tr, y_tr, X_va, y_va, out_dir=self.out_dir / f"fold{i_fold}")
             fold_fitted_results[f"fold{i_fold}"] = fitted_resuts
+            va_orders.extend(list(va_idx))
 
         # NOTE : oof 予測値取得する eg. {est1: pred, est2: pred, ...} pred: ArrayLike
-        oof = self.get_oof(fold_fitted_results)
+        oof = self.get_oof(fold_fitted_results, orders=va_orders)
         oof_results = {}
         for est, pred in oof.items():
             result_dir = self.out_dir / "results" / est
@@ -359,7 +366,7 @@ class Trainer:
         scores_df = scores_df.assign(name=name).reset_index().rename(columns={"index": "estimator"})
         return scores_df
 
-    def get_oof(self, cv_results: dict) -> dict[str, ArrayLike]:
+    def get_oof(self, cv_results: dict, orders: ArrayLike | None) -> dict[str, ArrayLike]:
         """Get Out Of Fold Prediction results.
 
         Returns:
@@ -375,6 +382,12 @@ class Trainer:
                     oof_results[est] = list(data["pred"])
                 else:
                     oof_results[est].extend(list(data["pred"]))
+
+        if orders is not None:
+            for est, pred in oof_results.items():
+                # order に従って並び替え
+                oof_results[est] = np.array(pred)[np.argsort(orders)]  # type: ignore
+            return oof_results  # type: ignore
 
         return oof_results  # type: ignore
 
