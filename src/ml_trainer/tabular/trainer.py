@@ -7,7 +7,7 @@ import joblib
 import numpy as np
 import pandas as pd
 import polars as pl
-from numpy.typing import ArrayLike
+from numpy.typing import ArrayLike, NDArray
 from sklearn.metrics import (
     log_loss,
     mean_absolute_error,
@@ -20,7 +20,7 @@ from sklearn.utils.multiclass import type_of_target
 from .evaluation.classification import macro_roc_auc_score, opt_acc_score, opt_f1_score
 from .models.base import EstimatorBase
 from .types import XyArrayLike
-from .visualization import make_feature_importance_fig
+from .visualization import make_confusion_matrix_fig, make_feature_importance_fig
 
 REGRESSION_METRICS = {
     "rmse": root_mean_squared_error,
@@ -475,6 +475,40 @@ class Trainer:
                 fig.savefig(save_dir / "feature_importance.png", dpi=300)
 
         return feature_importances
+
+    def make_plot_confusion_matrix(
+        self,
+        y: NDArray,
+        out_dir: Path | None = None,
+        palette: str = "GnBu",
+        save: bool = True,
+    ) -> None:
+        if self.estimators is None:
+            raise ValueError("estimators must be specified")
+
+        if not self.is_fitted:
+            raise ValueError("Estimator is not fitted yet.")
+
+        out_dir = out_dir or self.out_dir
+        if self.is_cv:
+            # NOTE : cv 予測時は oof の confusion matrix をプロットする
+            out_dir = out_dir / "results"
+        log(f"Load probability from: {out_dir}", logger=self.logger)
+
+        for estimator in self.estimators:
+            estimator_uid = estimator.uid
+
+            estimator_dir = out_dir / estimator_uid
+            pred = joblib.load(estimator_dir / "pred.pkl")
+            fig = make_confusion_matrix_fig(
+                y_true=y,
+                y_pred=pred,
+                normalize=True,
+                cmap=palette,
+                title=estimator_uid,
+            )
+            if save:
+                fig.savefig(estimator_dir / "confusion_matrix.png", dpi=300)
 
     def save(self, out_dir: Path | None = None) -> None:
         """snapshot items を保存する."""
