@@ -17,7 +17,13 @@ from sklearn.metrics import (
 from sklearn.model_selection import BaseCrossValidator, KFold
 from sklearn.utils.multiclass import type_of_target
 
-from .evaluation.classification import macro_roc_auc_score, opt_acc_score, opt_f1_score
+from .evaluation.classification import (
+    confusion_matrix_list,
+    macro_roc_auc_score,
+    macro_roc_ovr_score,
+    opt_acc_score,
+    opt_f1_score,
+)
 from .models.base import EstimatorBase
 from .types import XyArrayLike
 from .visualization import make_confusion_matrix_fig, make_feature_importance_fig
@@ -33,8 +39,15 @@ BINARY_METRICS = {
     "auc": macro_roc_auc_score,
     "opt_acc": opt_acc_score,
     "opt_f1": opt_f1_score,
+    "confusion_matrix": confusion_matrix_list,
 }
-MULTICLASS_METRICS = {"macro_auc": macro_roc_auc_score}
+
+MULTICLASS_METRICS = {
+    "macro_auc": macro_roc_ovr_score,
+    "loglogss": log_loss,
+    "confusion_matrix": confusion_matrix_list,
+}
+
 TASK_TYPES = ["binary", "multiclass", "regression"]
 
 
