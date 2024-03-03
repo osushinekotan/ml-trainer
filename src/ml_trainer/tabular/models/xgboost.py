@@ -8,7 +8,10 @@ from .base import EstimatorBase
 
 
 class XGBoostModel(EstimatorBase):
-    """xgboost model wrapper."""
+    """
+    xgboost model wrapper.
+    - xgboost parameter docs : https://xgboost.readthedocs.io/en/stable/parameter.html
+    """
 
     def __init__(
         self,

@@ -8,7 +8,10 @@ from .base import EstimatorBase
 
 
 class LightGBMModel(EstimatorBase):
-    """lightgbm model wrapper."""
+    """
+    lightgbm model wrapper.
+    - lightgbm parameter docs : https://lightgbm.readthedocs.io/en/latest/Parameters.html
+    """
 
     def __init__(
         self,
