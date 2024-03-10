@@ -14,6 +14,8 @@ asttokens==2.4.1
     # via stack-data
 catboost==1.2.3
     # via ml-trainer
+category-encoders==2.6.3
+    # via ml-trainer
 cfgv==3.4.0
     # via pre-commit
 comm==0.2.1
@@ -78,25 +80,34 @@ nodeenv==1.8.0
     # via pre-commit
 numpy==1.26.4
     # via catboost
+    # via category-encoders
     # via contourpy
     # via lightgbm
     # via matplotlib
     # via ml-trainer
+    # via patsy
     # via scikit-learn
     # via scipy
     # via seaborn
+    # via statsmodels
     # via xgboost
 packaging==23.2
     # via ipykernel
     # via matplotlib
     # via plotly
     # via pytest
+    # via statsmodels
 pandas==2.2.1
     # via catboost
+    # via category-encoders
     # via ml-trainer
     # via seaborn
+    # via statsmodels
 parso==0.8.3
     # via jedi
+patsy==0.5.6
+    # via category-encoders
+    # via statsmodels
 pexpect==4.9.0
     # via ipython
 pillow==10.2.0
@@ -141,11 +152,14 @@ rich==13.7.1
     # via ml-trainer
 ruff==0.2.2
 scikit-learn==1.4.1.post1
+    # via category-encoders
     # via ml-trainer
 scipy==1.12.0
     # via catboost
+    # via category-encoders
     # via lightgbm
     # via scikit-learn
+    # via statsmodels
     # via xgboost
 seaborn==0.13.2
     # via ml-trainer
@@ -154,9 +168,12 @@ setuptools==69.1.1
 six==1.16.0
     # via asttokens
     # via catboost
+    # via patsy
     # via python-dateutil
 stack-data==0.6.3
     # via ipython
+statsmodels==0.14.1
+    # via category-encoders
 tenacity==8.2.3
     # via plotly
 threadpoolctl==3.3.0
