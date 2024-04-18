@@ -12,19 +12,19 @@ catboost==1.2.3
     # via ml-trainer
 category-encoders==2.6.3
     # via ml-trainer
-contourpy==1.2.0
+contourpy==1.2.1
     # via matplotlib
 cycler==0.12.1
     # via matplotlib
-fonttools==4.49.0
+fonttools==4.51.0
     # via matplotlib
-graphviz==0.20.1
+graphviz==0.20.3
     # via catboost
 iniconfig==2.0.0
     # via pytest
 japanize-matplotlib==1.1.3
     # via ml-trainer
-joblib==1.3.2
+joblib==1.4.0
     # via scikit-learn
 kiwisolver==1.4.5
     # via matplotlib
@@ -32,7 +32,7 @@ lightgbm==4.3.0
     # via ml-trainer
 markdown-it-py==3.0.0
     # via rich
-matplotlib==3.8.3
+matplotlib==3.8.4
     # via catboost
     # via japanize-matplotlib
     # via seaborn
@@ -45,18 +45,19 @@ numpy==1.26.4
     # via lightgbm
     # via matplotlib
     # via ml-trainer
+    # via pandas
     # via patsy
     # via scikit-learn
     # via scipy
     # via seaborn
     # via statsmodels
     # via xgboost
-packaging==23.2
+packaging==24.0
     # via matplotlib
     # via plotly
     # via pytest
     # via statsmodels
-pandas==2.2.1
+pandas==2.2.2
     # via catboost
     # via category-encoders
     # via ml-trainer
@@ -65,31 +66,31 @@ pandas==2.2.1
 patsy==0.5.6
     # via category-encoders
     # via statsmodels
-pillow==10.2.0
+pillow==10.3.0
     # via matplotlib
-plotly==5.19.0
+plotly==5.21.0
     # via catboost
 pluggy==1.4.0
     # via pytest
-polars==0.20.10
+polars==0.20.21
     # via ml-trainer
 pygments==2.17.2
     # via rich
-pyparsing==3.1.1
+pyparsing==3.1.2
     # via matplotlib
-pytest==8.0.2
+pytest==8.1.1
     # via ml-trainer
-python-dateutil==2.8.2
+python-dateutil==2.9.0.post0
     # via matplotlib
     # via pandas
 pytz==2024.1
     # via pandas
 rich==13.7.1
     # via ml-trainer
-scikit-learn==1.4.1.post1
+scikit-learn==1.4.2
     # via category-encoders
     # via ml-trainer
-scipy==1.12.0
+scipy==1.13.0
     # via catboost
     # via category-encoders
     # via lightgbm
@@ -102,11 +103,11 @@ six==1.16.0
     # via catboost
     # via patsy
     # via python-dateutil
-statsmodels==0.14.1
+statsmodels==0.14.2
     # via category-encoders
 tenacity==8.2.3
     # via plotly
-threadpoolctl==3.3.0
+threadpoolctl==3.4.0
     # via scikit-learn
 tzdata==2024.1
     # via pandas

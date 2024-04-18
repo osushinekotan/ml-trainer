@@ -18,9 +18,9 @@ category-encoders==2.6.3
     # via ml-trainer
 cfgv==3.4.0
     # via pre-commit
-comm==0.2.1
+comm==0.2.2
     # via ipykernel
-contourpy==1.2.0
+contourpy==1.2.1
     # via matplotlib
 cycler==0.12.1
     # via matplotlib
@@ -32,28 +32,28 @@ distlib==0.3.8
     # via virtualenv
 executing==2.0.1
     # via stack-data
-filelock==3.13.1
+filelock==3.13.4
     # via virtualenv
-fonttools==4.49.0
+fonttools==4.51.0
     # via matplotlib
-graphviz==0.20.1
+graphviz==0.20.3
     # via catboost
 identify==2.5.35
     # via pre-commit
 iniconfig==2.0.0
     # via pytest
-ipykernel==6.29.3
-ipython==8.22.1
+ipykernel==6.29.4
+ipython==8.23.0
     # via ipykernel
 japanize-matplotlib==1.1.3
     # via ml-trainer
 jedi==0.19.1
     # via ipython
-joblib==1.3.2
+joblib==1.4.0
     # via scikit-learn
-jupyter-client==8.6.0
+jupyter-client==8.6.1
     # via ipykernel
-jupyter-core==5.7.1
+jupyter-core==5.7.2
     # via ipykernel
     # via jupyter-client
 kiwisolver==1.4.5
@@ -62,16 +62,16 @@ lightgbm==4.3.0
     # via ml-trainer
 markdown-it-py==3.0.0
     # via rich
-matplotlib==3.8.3
+matplotlib==3.8.4
     # via catboost
     # via japanize-matplotlib
     # via seaborn
-matplotlib-inline==0.1.6
+matplotlib-inline==0.1.7
     # via ipykernel
     # via ipython
 mdurl==0.1.2
     # via markdown-it-py
-mypy==1.8.0
+mypy==1.9.0
 mypy-extensions==1.0.0
     # via mypy
 nest-asyncio==1.6.0
@@ -85,43 +85,44 @@ numpy==1.26.4
     # via lightgbm
     # via matplotlib
     # via ml-trainer
+    # via pandas
     # via patsy
     # via scikit-learn
     # via scipy
     # via seaborn
     # via statsmodels
     # via xgboost
-packaging==23.2
+packaging==24.0
     # via ipykernel
     # via matplotlib
     # via plotly
     # via pytest
     # via statsmodels
-pandas==2.2.1
+pandas==2.2.2
     # via catboost
     # via category-encoders
     # via ml-trainer
     # via seaborn
     # via statsmodels
-parso==0.8.3
+parso==0.8.4
     # via jedi
 patsy==0.5.6
     # via category-encoders
     # via statsmodels
 pexpect==4.9.0
     # via ipython
-pillow==10.2.0
+pillow==10.3.0
     # via matplotlib
 platformdirs==4.2.0
     # via jupyter-core
     # via virtualenv
-plotly==5.19.0
+plotly==5.21.0
     # via catboost
 pluggy==1.4.0
     # via pytest
-polars==0.20.10
+polars==0.20.21
     # via ml-trainer
-pre-commit==3.6.2
+pre-commit==3.7.0
 prompt-toolkit==3.0.43
     # via ipython
 psutil==5.9.8
@@ -133,11 +134,11 @@ pure-eval==0.2.2
 pygments==2.17.2
     # via ipython
     # via rich
-pyparsing==3.1.1
+pyparsing==3.1.2
     # via matplotlib
-pytest==8.0.2
+pytest==8.1.1
     # via ml-trainer
-python-dateutil==2.8.2
+python-dateutil==2.9.0.post0
     # via jupyter-client
     # via matplotlib
     # via pandas
@@ -145,16 +146,16 @@ pytz==2024.1
     # via pandas
 pyyaml==6.0.1
     # via pre-commit
-pyzmq==25.1.2
+pyzmq==26.0.0
     # via ipykernel
     # via jupyter-client
 rich==13.7.1
     # via ml-trainer
-ruff==0.2.2
-scikit-learn==1.4.1.post1
+ruff==0.3.7
+scikit-learn==1.4.2
     # via category-encoders
     # via ml-trainer
-scipy==1.12.0
+scipy==1.13.0
     # via catboost
     # via category-encoders
     # via lightgbm
@@ -163,7 +164,7 @@ scipy==1.12.0
     # via xgboost
 seaborn==0.13.2
     # via ml-trainer
-setuptools==69.1.1
+setuptools==69.5.1
     # via nodeenv
 six==1.16.0
     # via asttokens
@@ -172,27 +173,28 @@ six==1.16.0
     # via python-dateutil
 stack-data==0.6.3
     # via ipython
-statsmodels==0.14.1
+statsmodels==0.14.2
     # via category-encoders
 tenacity==8.2.3
     # via plotly
-threadpoolctl==3.3.0
+threadpoolctl==3.4.0
     # via scikit-learn
 tornado==6.4
     # via ipykernel
     # via jupyter-client
-traitlets==5.14.1
+traitlets==5.14.2
     # via comm
     # via ipykernel
     # via ipython
     # via jupyter-client
     # via jupyter-core
     # via matplotlib-inline
-typing-extensions==4.9.0
+typing-extensions==4.11.0
+    # via ipython
     # via mypy
 tzdata==2024.1
     # via pandas
-virtualenv==20.25.1
+virtualenv==20.25.3
     # via pre-commit
 wcwidth==0.2.13
     # via prompt-toolkit
