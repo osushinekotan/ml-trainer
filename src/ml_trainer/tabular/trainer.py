@@ -519,6 +519,7 @@ class Trainer:
         out_dir: Path | None = None,
         palette: str = "GnBu",
         save: bool = True,
+        threshold: float = 0.5,
     ) -> None:
         if self.estimators is None:
             raise ValueError("estimators must be specified")
@@ -543,6 +544,7 @@ class Trainer:
                 normalize=True,
                 cmap=palette,
                 title=estimator_uid,
+                threshold=threshold,
             )
             if save:
                 fig.savefig(estimator_dir / "confusion_matrix.png", dpi=300)

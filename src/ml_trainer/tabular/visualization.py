@@ -78,6 +78,7 @@ def make_confusion_matrix_fig(
     normalize: bool = False,
     cmap: str = "bwr_r",
     title: str = "Confusion Matrix",
+    threshold: float = 0.5,
 ) -> Figure:
     """混同行列を可視化する.
 
@@ -86,11 +87,12 @@ def make_confusion_matrix_fig(
         y_pred (ArrayLike): 予測ラベル。予測確率 input の場合は、自動でラベルを取得。binary の場合は 0.5 で閾値を設定、それ以外は argmax でラベルを取得。
         normalize (bool, optional): 正解ラベル方向に normalize するかどうか. Defaults to False.
         cmap (str, optional): プロットの色. Defaults to "bwr_r".
+        threshold (float): 予測確率をラベルに変換する際の閾値. Defaults to 0.5.
 
     Returns:
         Figure: 混同行列を可視化した Figure オブジェクト
     """
-    y_pred = transform_proba_to_label(y_pred)
+    y_pred = transform_proba_to_label(y_pred, threshold=threshold)
     cm = confusion_matrix(y_true, y_pred)
 
     if normalize:
