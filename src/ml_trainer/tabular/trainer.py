@@ -520,6 +520,7 @@ class Trainer:
         palette: str = "GnBu",
         save: bool = True,
         threshold: float = 0.5,
+        normalize: bool = True,
     ) -> None:
         if self.estimators is None:
             raise ValueError("estimators must be specified")
@@ -541,13 +542,14 @@ class Trainer:
             fig = make_confusion_matrix_fig(
                 y_true=y,
                 y_pred=pred,
-                normalize=True,
+                normalize=normalize,
                 cmap=palette,
                 title=estimator_uid,
                 threshold=threshold,
             )
             if save:
-                fig.savefig(estimator_dir / "confusion_matrix.png", dpi=300)
+                prefix = "normalized_" if normalize else ""
+                fig.savefig(estimator_dir / f"{prefix}confusion_matrix.png", dpi=300)
 
     def make_plot_distribution(
         self,
