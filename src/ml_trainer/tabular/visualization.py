@@ -5,9 +5,46 @@ import pandas as pd
 import seaborn as sns
 from matplotlib.figure import Figure
 from numpy.typing import NDArray
-from sklearn.metrics import confusion_matrix
+from sklearn.metrics import average_precision_score, confusion_matrix, precision_recall_curve
 
 from ..tabular.utils.trainer_utils import transform_proba_to_label
+
+
+def make_pecision_recall_curve_fig(
+    y_true: NDArray,
+    y_pred: NDArray,
+    title: str = "Precision-Recall Curve",
+    palette: str = "bwr_r",
+) -> Figure:
+    """Precision-Recall curve を可視化する.
+
+    Args:
+        y_true (ArrayLike): 正解ラベル
+        y_pred (ArrayLike): 予測確率
+        title (str, optional): グラフタイトル. Defaults to "Precision-Recall Curve".
+        palette (str, optional): グラフの色. Defaults to "bwr_r".
+
+    Returns:
+        Figure: Precision-Recall curve を可視化した Figure オブジェクト
+    """
+    japanize_matplotlib.japanize()
+    sns.set_style("whitegrid")
+    palette = sns.color_palette("muted")
+
+    precision, recall, _ = precision_recall_curve(y_true, y_pred)
+    average_precision = average_precision_score(y_true, y_pred)
+
+    fig, ax = plt.subplots(figsize=(8, 6))
+    ax.plot(recall, precision, color=palette[0], label=f"AP: {average_precision:.2f}")  # APをラベルに追加
+    ax.set_xlabel("Recall")
+    ax.set_ylabel("Precision")
+    ax.set_title(title)
+    ax.legend(loc="lower left")
+    ax.grid(True)
+
+    plt.show()
+
+    return fig
 
 
 def make_feature_importance_fig(
