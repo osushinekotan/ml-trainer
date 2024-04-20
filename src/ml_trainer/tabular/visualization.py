@@ -5,16 +5,49 @@ import pandas as pd
 import seaborn as sns
 from matplotlib.figure import Figure
 from numpy.typing import NDArray
+from sklearn.calibration import calibration_curve
 from sklearn.metrics import average_precision_score, confusion_matrix, precision_recall_curve
 
 from ..tabular.utils.trainer_utils import transform_proba_to_label
+
+
+def make_calibration_curve_fig(
+    y_true: NDArray,
+    y_pred: NDArray,
+    title: str = "Calibration Curve",
+    n_bins: int = 10,
+) -> Figure:
+    """Calibration curve を可視化する.
+
+    Args:
+        y_true (ArrayLike): 正解ラベル
+        y_pred (ArrayLike): 予測確率
+        title (str, optional): グラフタイトル. Defaults to "Calibration Curve".
+        n_bins (int, optional): ビンの数. Defaults to 10.
+        palette (str, optional): グラフの色. Defaults to "bwr_r".
+
+    Returns:
+        Figure: Calibration curve を可視化した Figure オブジェクト
+    """
+    japanize_matplotlib.japanize()
+    sns.set_style("whitegrid")
+
+    prob_true, prob_pred = calibration_curve(y_true, y_pred, n_bins=n_bins)
+    fig, ax = plt.subplots(figsize=(8, 6))
+    ax.plot(prob_pred, prob_true, marker="o", linewidth=1, label="Calibration plot")
+    ax.plot([0, 1], [0, 1], linestyle="--", label="Perfectly calibrated")
+    ax.set_xlabel("Mean predicted probability")
+    ax.set_ylabel("Fraction of positives")
+    ax.set_title(title)
+    ax.legend()
+    ax.grid(True)
+    return fig
 
 
 def make_pecision_recall_curve_fig(
     y_true: NDArray,
     y_pred: NDArray,
     title: str = "Precision-Recall Curve",
-    palette: str = "bwr_r",
 ) -> Figure:
     """Precision-Recall curve を可視化する.
 
@@ -35,15 +68,12 @@ def make_pecision_recall_curve_fig(
     average_precision = average_precision_score(y_true, y_pred)
 
     fig, ax = plt.subplots(figsize=(8, 6))
-    ax.plot(recall, precision, color=palette[0], label=f"AP: {average_precision:.2f}")  # APをラベルに追加
+    ax.plot(recall, precision, color=palette[0], label=f"AP: {average_precision:.2f}")
     ax.set_xlabel("Recall")
     ax.set_ylabel("Precision")
     ax.set_title(title)
     ax.legend(loc="lower left")
     ax.grid(True)
-
-    plt.show()
-
     return fig
 
 

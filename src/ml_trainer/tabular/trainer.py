@@ -29,6 +29,7 @@ from .evaluation.classification import (
 from .models.base import EstimatorBase
 from .types import XyArrayLike
 from .visualization import (
+    make_calibration_curve_fig,
     make_confusion_matrix_fig,
     make_distribution_fig,
     make_feature_importance_fig,
@@ -564,7 +565,6 @@ class Trainer:
         y: NDArray,
         out_dir: Path | None = None,
         save: bool = True,
-        palette: str = "bwr_r",
     ) -> None:
         if self.estimators is None:
             raise ValueError("estimators must be specified")
@@ -587,10 +587,37 @@ class Trainer:
                 y_true=y,
                 y_pred=pred,
                 title=estimator_uid,
-                palette=palette,
             )
             if save:
                 fig.savefig(estimator_dir / "precision_recall_curve.png", dpi=300)
+
+    def make_plot_calibration_curve(
+        self,
+        y: NDArray,
+        n_bins: int = 10,
+        out_dir: Path | None = None,
+        save: bool = True,
+    ) -> None:
+        if self.estimators is None:
+            raise ValueError("estimators must be specified")
+
+        if not self.is_fitted:
+            raise ValueError("Estimator is not fitted yet.")
+
+        out_dir = out_dir or self.out_dir
+        if self.is_cv:
+            # NOTE : cv 予測時は oof の calibration curve をプロットする
+            out_dir = out_dir / "results"
+        log(f"Load probability from: {out_dir}", logger=self.logger)
+
+        for estimator in self.estimators:
+            estimator_uid = estimator.uid
+
+            estimator_dir = out_dir / estimator_uid
+            pred = joblib.load(estimator_dir / "pred.pkl")
+            fig = make_calibration_curve_fig(y_true=y, y_pred=pred, title=estimator_uid, n_bins=n_bins)
+            if save:
+                fig.savefig(estimator_dir / "calibration_curve.png", dpi=300)
 
     def make_plot_distribution(
         self,
