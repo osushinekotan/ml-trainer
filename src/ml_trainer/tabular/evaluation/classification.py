@@ -3,7 +3,7 @@ from typing import Callable
 import joblib
 import numpy as np
 from numpy.typing import NDArray
-from sklearn.metrics import accuracy_score, confusion_matrix, f1_score, roc_auc_score
+from sklearn.metrics import accuracy_score, balanced_accuracy_score, confusion_matrix, f1_score, roc_auc_score
 
 from ..utils.trainer_utils import transform_proba_to_label
 
@@ -57,3 +57,11 @@ def opt_acc_score(
 ) -> dict[str, float]:
     th = optimize_threshold(y_true, y_pred, metrics=accuracy_score)
     return {"th": th, "score": accuracy_score(y_true, y_pred >= th)}
+
+
+def opt_balanced_acc_score(
+    y_true: NDArray,
+    y_pred: NDArray,
+) -> dict[str, float]:
+    th = optimize_threshold(y_true, y_pred, metrics=balanced_accuracy_score)
+    return {"th": th, "score": balanced_accuracy_score(y_true, y_pred >= th)}

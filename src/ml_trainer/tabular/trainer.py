@@ -9,6 +9,7 @@ import pandas as pd
 import polars as pl
 from numpy.typing import ArrayLike, NDArray
 from sklearn.metrics import (
+    average_precision_score,
     log_loss,
     mean_absolute_error,
     mean_absolute_percentage_error,
@@ -22,11 +23,17 @@ from .evaluation.classification import (
     macro_roc_auc_score,
     macro_roc_ovr_score,
     opt_acc_score,
+    opt_balanced_acc_score,
     opt_f1_score,
 )
 from .models.base import EstimatorBase
 from .types import XyArrayLike
-from .visualization import make_confusion_matrix_fig, make_distribution_fig, make_feature_importance_fig
+from .visualization import (
+    make_confusion_matrix_fig,
+    make_distribution_fig,
+    make_feature_importance_fig,
+    make_pecision_recall_curve_fig,
+)
 
 REGRESSION_METRICS = {
     "rmse": root_mean_squared_error,
@@ -38,8 +45,9 @@ BINARY_METRICS = {
     "loglogss": log_loss,
     "auc": macro_roc_auc_score,
     "opt_acc": opt_acc_score,
+    "opt_balanced_acc": opt_balanced_acc_score,
     "opt_f1": opt_f1_score,
-    "confusion_matrix": confusion_matrix_list,
+    "average_precision": lambda y_true, y_pred: average_precision_score(y_true, y_pred),
 }
 
 MULTICLASS_METRICS = {
@@ -550,6 +558,39 @@ class Trainer:
             if save:
                 prefix = "normalized_" if normalize else ""
                 fig.savefig(estimator_dir / f"{prefix}confusion_matrix.png", dpi=300)
+
+    def make_plot_precision_recall_curve(
+        self,
+        y: NDArray,
+        out_dir: Path | None = None,
+        save: bool = True,
+        palette: str = "bwr_r",
+    ) -> None:
+        if self.estimators is None:
+            raise ValueError("estimators must be specified")
+
+        if not self.is_fitted:
+            raise ValueError("Estimator is not fitted yet.")
+
+        out_dir = out_dir or self.out_dir
+        if self.is_cv:
+            # NOTE : cv 予測時は oof の precision recall curve をプロットする
+            out_dir = out_dir / "results"
+        log(f"Load probability from: {out_dir}", logger=self.logger)
+
+        for estimator in self.estimators:
+            estimator_uid = estimator.uid
+
+            estimator_dir = out_dir / estimator_uid
+            pred = joblib.load(estimator_dir / "pred.pkl")
+            fig = make_pecision_recall_curve_fig(
+                y_true=y,
+                y_pred=pred,
+                title=estimator_uid,
+                palette=palette,
+            )
+            if save:
+                fig.savefig(estimator_dir / "precision_recall_curve.png", dpi=300)
 
     def make_plot_distribution(
         self,
