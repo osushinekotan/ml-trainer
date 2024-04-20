@@ -41,10 +41,17 @@ def make_feature_importance_fig(
         raise ValueError("Invalid plot_type")
 
     order = (
-        feature_importance_df.groupby("feature").sum()[["importance"]].sort_values("importance", ascending=False).index
+        (feature_importance_df)
+        .groupby("feature")
+        .sum()[["importance"]]
+        .sort_values("importance", ascending=False)
+        .index
     )
     if top_n is not None:
         order = order[:top_n]
+        feature_importance_df = feature_importance_df[feature_importance_df["feature"].isin(order)].reset_index(
+            drop=True
+        )
 
     fig, ax = plt.subplots(figsize=(12, max(6, len(order) * 0.25)))
     plot_params = dict(
